@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   FolderPlus,
+  Headphones,
   Heart,
   Lock,
   Share2,
@@ -316,6 +317,15 @@ export function BookDetailPage() {
                 <Button variant="primary" size="lg" className="rounded-full px-6">
                   <BookOpen className="h-4 w-4 text-gold" />
                   {progress && progress.current_page > 1 ? 'Continuar lectura' : 'Leer ahora'}
+                </Button>
+              </Link>
+            )}
+
+            {availability.canRead && (
+              <Link to={`/leer/${book.id}?audio=1`}>
+                <Button variant="gold" size="lg" className="rounded-full px-5">
+                  <Headphones className="h-4 w-4" />
+                  Escuchar
                 </Button>
               </Link>
             )}

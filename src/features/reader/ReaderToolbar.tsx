@@ -8,6 +8,7 @@ import {
   Expand,
   ExternalLink,
   EyeOff,
+  Headphones,
   Maximize2,
   Minimize2,
   MoreHorizontal,
@@ -47,6 +48,9 @@ interface ReaderToolbarProps {
   onToggleFullscreen: () => void;
   onDownload?: () => void;
   onOpenNewTab?: () => void;
+  audioOpen?: boolean;
+  audioPlaying?: boolean;
+  onToggleAudio?: () => void;
 }
 
 export function ReaderToolbar({
@@ -72,6 +76,9 @@ export function ReaderToolbar({
   onToggleFullscreen,
   onDownload,
   onOpenNewTab,
+  audioOpen = false,
+  audioPlaying = false,
+  onToggleAudio,
 }: ReaderToolbarProps) {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -173,8 +180,32 @@ export function ReaderToolbar({
           </h1>
         </div>
 
-        {/* Right: Minimal Apple Books-inspired 4-control cluster */}
+        {/* Right: Minimal Apple Books-inspired control cluster */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Audiobook Mode Toggle */}
+          {onToggleAudio && (
+            <button
+              type="button"
+              onClick={onToggleAudio}
+              aria-label={audioOpen ? 'Mostrar reproductor de audiolibro' : 'Escuchar audiolibro'}
+              aria-pressed={audioOpen}
+              title="Escuchar audiolibro (A)"
+              className={cn(
+                'relative h-9 px-2.5 sm:px-3 rounded-full inline-flex items-center gap-1.5 text-xs font-medium transition-colors',
+                audioOpen ? activeBtnClass : btnClass
+              )}
+            >
+              <Headphones className="h-[16px] w-[16px]" strokeWidth={1.85} />
+              <span className="hidden md:inline">Escuchar</span>
+              {audioPlaying && (
+                <span
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse"
+                />
+              )}
+            </button>
+          )}
+
           {/* Search inside PDF */}
           <button
             type="button"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { ensurePdfWorker } from './pdfWorker';
 import { ReaderToolbar } from './ReaderToolbar';
+import { AudiobookPlayer } from './AudiobookPlayer';
+import { useAudiobookPlayer } from './useAudiobookPlayer';
 import {
   ReaderSidebar,
   type PdfOutlineEntry,
@@ -49,6 +51,8 @@ function escapeRegExp(str: string): string {
 
 export function PdfReaderPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const autoOpenAudio = searchParams.get('audio') === '1';
   const isMobile = useMediaQuery('(max-width: 767px)');
   const { data: book, isLoading: loadingBook } = useBookQuery(id);
   const {
@@ -128,6 +132,24 @@ export function PdfReaderPage() {
     return docSource.url;
   }, [docSource]);
 
+  const driveExternalUrl = useMemo(() => {
+    if (!book) return null;
+    if (book.drive_web_view_link) return book.drive_web_view_link;
+    if (book.drive_file_id) {
+      return `https://drive.google.com/file/d/${encodeURIComponent(book.drive_file_id)}/view`;
+    }
+    return null;
+  }, [book]);
+
+  const safeDownload = useCallback(async () => {
+    if (!book) return;
+    try {
+      await handleDownloadBook(book);
+    } catch {
+      // El toast de error ya fue notificado por handleDownloadBook
+    }
+  }, [book, handleDownloadBook]);
+
   const handleOpenInNewTab = useCallback(async () => {
     if (!docSource) return;
     if (docSource.kind === 'direct') {
@@ -136,15 +158,25 @@ export function PdfReaderPage() {
     }
     try {
       const res = await fetch(docSource.url, { headers: docSource.httpHeaders });
-      if (!res.ok) throw new Error('No autorizado');
+      if (!res.ok) {
+        if (driveExternalUrl) {
+          window.open(driveExternalUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        throw new Error('No autorizado');
+      }
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       window.open(blobUrl, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch {
+      if (driveExternalUrl) {
+        window.open(driveExternalUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
       setPdfLoadError('No se pudo abrir el documento en una nueva pestaña.');
     }
-  }, [docSource]);
+  }, [docSource, driveExternalUrl]);
 
   // Restore last read page and log reading history once per book open
   useEffect(() => {
@@ -196,6 +228,23 @@ export function PdfReaderPage() {
     [numPages]
   );
 
+  const audiobook = useAudiobookPlayer({
+    pdfDoc,
+    currentPage,
+    numPages,
+    bookTitle: book?.title ?? 'Documento jurídico',
+    bookAuthor: book?.author ?? 'MICOLE LIBRARY',
+    onGoToPage: goToPage,
+  });
+
+  // Auto-open Audiobook Studio when navigated with ?audio=1
+  const audioAutoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!autoOpenAudio || !pdfDoc || audioAutoOpenedRef.current) return;
+    audioAutoOpenedRef.current = true;
+    audiobook.openPlayer(true);
+  }, [audiobook, autoOpenAudio, pdfDoc]);
+
   // Keyboard navigation
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -220,16 +269,28 @@ export function PdfReaderPage() {
         e.preventDefault();
         setFitModeOverride('custom');
         setZoom((z) => Math.max(0.6, Number((z - 0.15).toFixed(2))));
+      } else if (e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        if (audiobook.isOpen) {
+          audiobook.setIsExpanded(!audiobook.isExpanded);
+        } else {
+          audiobook.openPlayer(false);
+        }
+      } else if (e.key === ' ' && audiobook.isOpen) {
+        e.preventDefault();
+        audiobook.togglePlay();
       } else if (e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setFocusMode((v) => !v);
+      } else if (e.key === 'Escape' && audiobook.isExpanded) {
+        audiobook.setIsExpanded(false);
       } else if (e.key === 'Escape' && focusMode) {
         setFocusMode(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [currentPage, focusMode, goToPage]);
+  }, [audiobook, currentPage, focusMode, goToPage]);
 
   // Extract PDF outline / TOC when document loads
   const handleDocumentLoad = useCallback(
@@ -507,7 +568,7 @@ export function PdfReaderPage() {
           </p>
           <div className="flex justify-center gap-2 pt-2">
             {book.allow_download !== false && (
-              <Button variant="primary" onClick={() => void handleDownloadBook(book)}>
+              <Button variant="primary" onClick={() => void safeDownload()}>
                 <Download className="h-4 w-4" />
                 Descargar archivo
               </Button>
@@ -580,7 +641,7 @@ export function PdfReaderPage() {
 
             <div className="flex flex-wrap items-center gap-2.5 pt-1">
               {book.allow_download !== false && (
-                <Button variant="primary" onClick={() => void handleDownloadBook(book)}>
+                <Button variant="primary" onClick={() => void safeDownload()}>
                   <Download className="h-4 w-4" />
                   Descargar documento
                 </Button>
@@ -656,9 +717,19 @@ export function PdfReaderPage() {
           isFullscreen={isFullscreen}
           onToggleFullscreen={handleToggleFullscreen}
           onDownload={
-            book.allow_download !== false ? () => void handleDownloadBook(book) : undefined
+            book.allow_download !== false ? () => void safeDownload() : undefined
           }
           onOpenNewTab={docSource ? () => void handleOpenInNewTab() : undefined}
+          audioOpen={audiobook.isOpen}
+          audioPlaying={audiobook.isPlaying}
+          onToggleAudio={() => {
+            if (!audiobook.isOpen) {
+              audiobook.openPlayer(false);
+              void audiobook.play();
+            } else {
+              audiobook.setIsExpanded(!audiobook.isExpanded);
+            }
+          }}
         />
       )}
 
@@ -681,9 +752,22 @@ export function PdfReaderPage() {
       <Document
         file={pdfFileInput}
         onLoadSuccess={(doc) => void handleDocumentLoad(doc)}
-        onLoadError={() =>
-          setPdfLoadError('No pudimos renderizar este archivo PDF. Puedes descargarlo directamente.')
-        }
+        onLoadError={async () => {
+          let detailed =
+            'No pudimos renderizar este archivo PDF en el visor. Puedes descargarlo o abrirlo en Google Drive.';
+          if (docSource?.kind === 'proxy') {
+            try {
+              const probe = await fetch(docSource.url, { headers: docSource.httpHeaders });
+              if (!probe.ok) {
+                const payload = (await probe.json().catch(() => null)) as { error?: string } | null;
+                if (payload?.error) detailed = payload.error;
+              }
+            } catch {
+              // ignore probe error
+            }
+          }
+          setPdfLoadError(detailed);
+        }}
         loading={
           <div className="flex-1 flex items-center justify-center p-8">
             <Skeleton className="h-[72vh] w-full max-w-[680px] rounded-xl" />
@@ -737,11 +821,21 @@ export function PdfReaderPage() {
         >
           {pdfLoadError ? (
             <div className="my-auto mx-auto max-w-md text-center space-y-4 bg-white text-ink rounded-2xl p-6 border border-line shadow-subtle">
-              <p className="text-sm font-semibold text-navy">{pdfLoadError}</p>
-              <div className="flex justify-center gap-2">
-                <Button variant="primary" onClick={() => void handleDownloadBook(book)}>
-                  Descargar PDF
-                </Button>
+              <p className="text-sm font-semibold text-navy leading-relaxed">{pdfLoadError}</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {book.allow_download !== false && (
+                  <Button variant="primary" onClick={() => void safeDownload()}>
+                    Descargar PDF
+                  </Button>
+                )}
+                {driveExternalUrl && (
+                  <a href={driveExternalUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary">
+                      <ExternalLink className="h-4 w-4" />
+                      Abrir en Google Drive
+                    </Button>
+                  </a>
+                )}
                 <Link to={`/libro/${book.id}`}>
                   <Button variant="secondary">Volver</Button>
                 </Link>
@@ -761,6 +855,43 @@ export function PdfReaderPage() {
             </div>
           )}
         </div>
+
+        {/* Audiobook Floating Dock & Full Studio Mode */}
+        <AudiobookPlayer
+          book={book}
+          theme={theme}
+          isMobile={isMobile}
+          currentPage={currentPage}
+          numPages={numPages}
+          onGoToPage={goToPage}
+          isOpen={audiobook.isOpen}
+          isExpanded={audiobook.isExpanded}
+          onSetExpanded={audiobook.setIsExpanded}
+          onClose={audiobook.closePlayer}
+          isSupported={audiobook.isSupported}
+          isPlaying={audiobook.isPlaying}
+          isLoadingPage={audiobook.isLoadingPage}
+          pageStatusMessage={audiobook.pageStatusMessage}
+          chunks={audiobook.chunks}
+          activeChunkIndex={audiobook.activeChunkIndex}
+          activeSentence={audiobook.activeSentence}
+          rate={audiobook.rate}
+          onSetRate={audiobook.setRate}
+          onCycleRate={audiobook.cycleRate}
+          autoAdvance={audiobook.autoAdvance}
+          onSetAutoAdvance={audiobook.setAutoAdvance}
+          voiceOptions={audiobook.voiceOptions}
+          selectedVoiceURI={audiobook.selectedVoiceURI}
+          onSetSelectedVoiceURI={audiobook.setSelectedVoiceURI}
+          sleepTimerOption={audiobook.sleepTimerOption}
+          sleepRemainingSec={audiobook.sleepRemainingSec}
+          onSetSleepTimer={audiobook.setSleepTimer}
+          estimatedPageSecondsLeft={audiobook.estimatedPageSecondsLeft}
+          onTogglePlay={audiobook.togglePlay}
+          onJumpToChunk={audiobook.jumpToChunk}
+          onSkipBackward={audiobook.skipBackward}
+          onSkipForward={audiobook.skipForward}
+        />
 
         {/* Floating Apple Books Scrubber Pill (Desktop & Tablet) */}
         {!isMobile && !focusMode && numPages > 0 && (

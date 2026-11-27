@@ -1,4 +1,10 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import {
+  DEFAULT_COVER_COLOR,
+  EDITORIAL_COVER_HEXES,
+  pickEditorialCoverColor,
+  sanitizeCoverPalette,
+} from '../utils/bookColors';
 import type { DriveConnectionSummary, DocumentVisibility, ValidityStatus } from '../types';
 import type { PickerSelectionItem } from '../lib/googlePicker';
 
@@ -99,6 +105,8 @@ export interface DriveImportOptions {
   validityStatus?: ValidityStatus;
   country?: string;
   subject?: string | null;
+  colorMode?: 'varied' | 'single';
+  coverColors?: string[];
 }
 
 export interface DriveImportResult {
@@ -107,14 +115,81 @@ export interface DriveImportResult {
     foldersProcessed: number;
     documentsImported: number;
     documentsSkippedUnsupported: number;
+    colorsApplied?: boolean;
     errors: Array<{ driveId: string; name?: string; message: string }>;
   };
+}
+
+async function applyFallbackCoverColors(
+  sinceIso: string,
+  palette: string[],
+  singleColorOverride: boolean
+): Promise<void> {
+  const client = supabase;
+  if (!isSupabaseConfigured || !client) return;
+  try {
+    let query = client
+      .from('documents')
+      .select('id, drive_file_id, color')
+      .eq('source_type', 'google_drive')
+      .gte('last_synced_at', sinceIso)
+      .order('added_at', { ascending: true });
+
+    if (!singleColorOverride) {
+      query = query.eq('color', DEFAULT_COVER_COLOR);
+    }
+
+    const { data: rows, error } = await query;
+    if (error || !rows || rows.length === 0) return;
+
+    const batchOffset = Math.floor(Math.random() * palette.length);
+    const updates = rows.map((row, index) => ({
+      id: String(row.id),
+      color: pickEditorialCoverColor(
+        String(row.drive_file_id || row.id),
+        palette,
+        index,
+        batchOffset
+      ),
+    }));
+
+    const chunkSize = 20;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const slice = updates.slice(i, i + chunkSize);
+      await Promise.all(
+        slice.map((item) =>
+          client.from('documents').update({ color: item.color }).eq('id', item.id)
+        )
+      );
+    }
+  } catch {
+    // Non-blocking fallback when Edge Function has not been redeployed yet
+  }
 }
 
 export async function importFromGoogleDrive(
   options: DriveImportOptions
 ): Promise<DriveImportResult> {
-  return invokeFunction<DriveImportResult>('google-drive-import', options as unknown as Record<string, unknown>);
+  const activePalette = sanitizeCoverPalette(options.coverColors);
+  const colorMode = options.colorMode ?? (activePalette.length === 1 ? 'single' : 'varied');
+  const startedAt = new Date(Date.now() - 10_000).toISOString();
+
+  const result = await invokeFunction<DriveImportResult>('google-drive-import', {
+    ...options,
+    colorMode,
+    coverColors: activePalette,
+  } as unknown as Record<string, unknown>);
+
+  // Fallback inmediato si la Edge Function remota aún no se ha redesplegado con soporte de colores
+  if (!result.report?.colorsApplied && (result.report?.documentsImported ?? 0) > 0) {
+    await applyFallbackCoverColors(
+      startedAt,
+      activePalette,
+      colorMode === 'single' || activePalette.length === 1
+    );
+  }
+
+  return result;
 }
 
 export interface DriveSyncResult {
@@ -129,7 +204,12 @@ export interface DriveSyncResult {
 }
 
 export async function triggerGoogleDriveSync(): Promise<DriveSyncResult> {
-  return invokeFunction<DriveSyncResult>('google-drive-sync', {});
+  const startedAt = new Date(Date.now() - 10_000).toISOString();
+  const result = await invokeFunction<DriveSyncResult>('google-drive-sync', {});
+  if ((result.added ?? 0) > 0) {
+    await applyFallbackCoverColors(startedAt, EDITORIAL_COVER_HEXES, false);
+  }
+  return result;
 }
 
 export function buildDriveProxyRequest(

@@ -1,6 +1,7 @@
 import { buildCorsHeaders, handleCorsPreflight, jsonResponse } from '../_shared/cors.ts';
 import {
   cleanDocumentTitle,
+  DEFAULT_COVER_PALETTE,
   driveApiFetch,
   extractExtension,
   formatSizeLabel,
@@ -8,6 +9,7 @@ import {
   GOOGLE_FOLDER_MIME,
   inferDocumentType,
   isSupportedDriveFile,
+  pickEditorialCoverColor,
   slugifyFolder,
   type DriveFileRecord,
 } from '../_shared/googleDrive.ts';
@@ -279,6 +281,7 @@ Deno.serve(async (req) => {
                   folder_id: parentFolder.id,
                   description: file.description ?? '',
                   document_type: inferDocumentType(title),
+                  color: pickEditorialCoverColor(file.id, DEFAULT_COVER_PALETTE),
                   source_type: 'google_drive',
                   drive_file_id: file.id,
                   drive_folder_id: parentDriveId,

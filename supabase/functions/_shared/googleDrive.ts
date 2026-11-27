@@ -10,6 +10,61 @@ export const GOOGLE_DRIVE_SCOPES = [
 
 export const GOOGLE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 
+export const DEFAULT_COVER_PALETTE = [
+  '#101D35',
+  '#1C3152',
+  '#2F4D44',
+  '#5C3A41',
+  '#4E3B31',
+  '#3B4259',
+  '#25394D',
+  '#5B4B2A',
+  '#3E2F4D',
+  '#1F4B43',
+];
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+export function sanitizeCoverPalette(colors?: unknown, singleColor?: unknown): string[] {
+  if (Array.isArray(colors)) {
+    const valid = Array.from(
+      new Set(
+        colors
+          .map((c) => (typeof c === 'string' ? c.trim().toUpperCase() : ''))
+          .filter((c) => HEX_COLOR_RE.test(c))
+      )
+    );
+    if (valid.length > 0) return valid;
+  }
+  if (typeof singleColor === 'string' && HEX_COLOR_RE.test(singleColor.trim())) {
+    return [singleColor.trim().toUpperCase()];
+  }
+  return DEFAULT_COVER_PALETTE;
+}
+
+function hashSeed(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function pickEditorialCoverColor(
+  seed: string,
+  palette: string[] = DEFAULT_COVER_PALETTE,
+  batchIndex?: number,
+  batchOffset = 0
+): string {
+  const safe = palette.length > 0 ? palette : DEFAULT_COVER_PALETTE;
+  if (safe.length === 1) return safe[0];
+  if (typeof batchIndex === 'number' && Number.isFinite(batchIndex)) {
+    return safe[Math.abs(batchOffset + batchIndex) % safe.length];
+  }
+  return safe[hashSeed(seed) % safe.length];
+}
+
 export const SUPPORTED_MIME_TYPES = new Set([
   'application/pdf',
   'application/msword',

@@ -8,6 +8,8 @@ import {
   GOOGLE_FOLDER_MIME,
   inferDocumentType,
   isSupportedDriveFile,
+  pickEditorialCoverColor,
+  sanitizeCoverPalette,
   slugifyFolder,
   type DriveFileRecord,
 } from '../_shared/googleDrive.ts';
@@ -31,6 +33,9 @@ interface ImportRequestBody {
   validityStatus?: 'vigente' | 'derogada' | 'reformada' | 'historica' | 'borrador' | 'no_aplica';
   country?: string;
   subject?: string | null;
+  colorMode?: 'varied' | 'single';
+  color?: string | null;
+  coverColors?: string[];
 }
 
 const FILE_FIELDS =
@@ -124,6 +129,10 @@ Deno.serve(async (req) => {
     const validityStatus = body.validityStatus ?? 'no_aplica';
     const country = body.country?.trim() || 'República Dominicana';
     const subject = body.subject?.trim() || null;
+    const activeCoverPalette = sanitizeCoverPalette(body.coverColors, body.color);
+    const isSingleColorOverride =
+      body.colorMode === 'single' || activeCoverPalette.length === 1;
+    const batchColorOffset = Math.floor(Math.random() * activeCoverPalette.length);
 
     let categoryName = 'Otras lecturas';
     if (categoryId) {
@@ -195,6 +204,12 @@ Deno.serve(async (req) => {
       const sizeBytes = file.size ? Number(file.size) : null;
       const title = cleanDocumentTitle(file.name);
       const docType = inferDocumentType(title);
+      const assignedColor = pickEditorialCoverColor(
+        file.id,
+        activeCoverPalette,
+        pendingDocumentRows.length,
+        batchColorOffset
+      );
 
       pendingDocumentRows.push({
         name: file.name,
@@ -209,6 +224,7 @@ Deno.serve(async (req) => {
         document_type: docType,
         validity_status: validityStatus,
         country,
+        color: assignedColor,
         source_type: 'google_drive',
         drive_file_id: file.id,
         drive_folder_id: file.parents?.[0] ?? null,
@@ -299,12 +315,12 @@ Deno.serve(async (req) => {
     // Preservar metadatos curados manualmente para registros ya existentes
     const existingByDriveId = new Map<
       string,
-      { title: string; author: string; description: string; subject: string | null }
+      { title: string; author: string; description: string; subject: string | null; color: string | null }
     >();
     for (const idBatch of chunkArray(driveIds, 100)) {
       const { data: existing } = await adminClient
         .from('documents')
-        .select('drive_file_id, title, author, description, subject')
+        .select('drive_file_id, title, author, description, subject, color')
         .in('drive_file_id', idBatch);
       for (const ex of existing ?? []) {
         if (ex.drive_file_id) {
@@ -313,6 +329,7 @@ Deno.serve(async (req) => {
             author: String(ex.author),
             description: String(ex.description ?? ''),
             subject: ex.subject ? String(ex.subject) : null,
+            color: ex.color ? String(ex.color) : null,
           });
         }
       }
@@ -321,12 +338,17 @@ Deno.serve(async (req) => {
     const mergedRows = uniqueRows.map((row) => {
       const existing = existingByDriveId.get(String(row.drive_file_id));
       if (!existing) return row;
+      const keepExistingColor =
+        !isSingleColorOverride &&
+        existing.color &&
+        existing.color.toUpperCase() !== '#101D35';
       return {
         ...row,
         title: existing.title || row.title,
         author: existing.author || row.author,
         description: existing.description || row.description,
         subject: existing.subject ?? row.subject,
+        color: keepExistingColor ? existing.color : row.color,
       };
     });
 
@@ -375,7 +397,10 @@ Deno.serve(async (req) => {
 
     return jsonResponse(req, {
       success: report.errors.length === 0,
-      report,
+      report: {
+        ...report,
+        colorsApplied: true,
+      },
     });
   } catch (err) {
     if (err instanceof Response) {

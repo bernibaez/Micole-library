@@ -3,6 +3,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { DOCUMENT_TYPE_LABELS, VALIDITY_STATUS_LABELS } from '../../utils/format';
+import { EDITORIAL_COVER_COLORS } from '../../utils/bookColors';
 import type {
   Book,
   CategoryInfo,
@@ -29,7 +30,7 @@ interface DocumentFormModalProps {
   onSave: (payload: UpsertDocumentInput) => Promise<void>;
 }
 
-const COVER_COLORS = ['#101D35', '#1C3152', '#2F4D44', '#5C3A41', '#4E3B31', '#3B4259', '#25394D'];
+const COVER_COLORS = EDITORIAL_COVER_COLORS;
 
 function DocumentFormFields({
   editingDoc,
@@ -387,13 +388,14 @@ function DocumentFormFields({
 
           <div className="space-y-1.5">
             <label className="block text-xs font-medium text-navy">Color editorial de portada</label>
-            <div className="flex items-center gap-2">
-              {COVER_COLORS.map((hex) => (
+            <div className="flex flex-wrap items-center gap-2">
+              {COVER_COLORS.map(({ hex, name: colorName }) => (
                 <button
                   key={hex}
                   type="button"
+                  title={colorName}
                   onClick={() => setColor(hex)}
-                  aria-label={`Seleccionar color ${hex}`}
+                  aria-label={`Seleccionar color ${colorName}`}
                   className={`h-7 w-7 rounded-full border-2 transition-transform ${
                     color === hex ? 'border-gold scale-110' : 'border-transparent'
                   }`}
