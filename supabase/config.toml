@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.google-drive-covers]
 verify_jwt = false
+
+[functions.audiobook-tts]
+verify_jwt = false

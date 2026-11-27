@@ -14,6 +14,7 @@ import {
   Repeat,
   RotateCcw,
   RotateCw,
+  Sparkles,
   Volume2,
   X,
 } from 'lucide-react';
@@ -53,6 +54,9 @@ interface AudiobookPlayerProps {
   voiceOptions: AudiobookVoiceOption[];
   selectedVoiceURI: string;
   onSetSelectedVoiceURI: (uri: string) => void;
+  onPreviewVoice: (uri: string) => void;
+  previewingVoiceURI: string | null;
+  hasCloudNeuralVoices: boolean;
   sleepTimerOption: SleepTimerOption;
   sleepRemainingSec: number;
   onSetSleepTimer: (opt: SleepTimerOption) => void;
@@ -139,6 +143,9 @@ export function AudiobookPlayer({
   voiceOptions,
   selectedVoiceURI,
   onSetSelectedVoiceURI,
+  onPreviewVoice,
+  previewingVoiceURI,
+  hasCloudNeuralVoices,
   sleepTimerOption,
   sleepRemainingSec,
   onSetSleepTimer,
@@ -164,8 +171,9 @@ export function AudiobookPlayer({
   const progressRatio =
     chunks.length > 0 ? Math.min(100, Math.round(((activeChunkIndex + 1) / chunks.length) * 100)) : 0;
 
-  const spanishVoices = voiceOptions.filter((v) => v.isSpanish);
-  const otherVoices = voiceOptions.filter((v) => !v.isSpanish);
+  const cloudVoices = voiceOptions.filter((v) => v.source === 'cloud');
+  const spanishVoices = voiceOptions.filter((v) => v.source === 'browser' && v.isSpanish);
+  const otherVoices = voiceOptions.filter((v) => v.source === 'browser' && !v.isSpanish);
   const currentVoice = voiceOptions.find((v) => v.voiceURI === selectedVoiceURI);
 
   const dockSurface =
@@ -614,13 +622,17 @@ export function AudiobookPlayer({
                     type="button"
                     onClick={() => setActivePopover((p) => (p === 'voice' ? null : 'voice'))}
                     className={cn(
-                      'h-9 px-3 rounded-full border text-xs font-medium inline-flex items-center gap-1.5 max-w-[180px] transition-colors',
-                      visiblePopover === 'voice'
-                        ? 'bg-[#C5AA70]/25 border-[#E5C784] text-[#E5C784]'
+                      'h-9 px-3 rounded-full border text-xs font-medium inline-flex items-center gap-1.5 max-w-[205px] transition-colors',
+                      visiblePopover === 'voice' || currentVoice?.source === 'cloud'
+                        ? 'bg-[#C5AA70]/22 border-[#E5C784]/75 text-[#E5C784]'
                         : 'bg-white/[0.06] border-white/12 text-white/85 hover:bg-white/10'
                     )}
                   >
-                    <Volume2 className="h-3.5 w-3.5 shrink-0 text-[#E5C784]" />
+                    {currentVoice?.source === 'cloud' ? (
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#E5C784]" />
+                    ) : (
+                      <Volume2 className="h-3.5 w-3.5 shrink-0 text-[#E5C784]" />
+                    )}
                     <span className="truncate">
                       {currentVoice ? currentVoice.name.replace(/^Microsoft |^Google /i, '') : 'Voz'}
                     </span>
@@ -633,7 +645,7 @@ export function AudiobookPlayer({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 6 }}
                         transition={TRANSITION_MICRO}
-                        className="absolute bottom-11 left-1/2 -translate-x-1/2 w-72 max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto rounded-2xl bg-[#182842] border border-white/15 shadow-2xl p-2 space-y-1 z-30"
+                        className="absolute bottom-11 left-1/2 -translate-x-1/2 w-80 max-w-[calc(100vw-2rem)] max-h-72 overflow-y-auto rounded-2xl bg-[#182842] border border-white/15 shadow-2xl p-2 space-y-1 z-30"
                       >
                         {voiceOptions.length === 0 ? (
                           <p className="text-xs text-white/65 p-2">
@@ -641,54 +653,162 @@ export function AudiobookPlayer({
                           </p>
                         ) : (
                           <>
+                            {cloudVoices.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E5C784] px-2 pt-1 flex items-center gap-1.5">
+                                  <Sparkles className="h-3 w-3" />
+                                  Voces Neural IA (Estudio)
+                                </p>
+                                {cloudVoices.map((v) => {
+                                  const selected = v.voiceURI === selectedVoiceURI;
+                                  const sampling = previewingVoiceURI === v.voiceURI;
+                                  return (
+                                    <div
+                                      key={v.voiceURI}
+                                      className={cn(
+                                        'flex items-center gap-1 rounded-xl pr-1 transition-colors',
+                                        selected
+                                          ? 'bg-[#E5C784] text-[#111E32]'
+                                          : 'text-white/90 hover:bg-white/10'
+                                      )}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          onSetSelectedVoiceURI(v.voiceURI);
+                                          setActivePopover(null);
+                                        }}
+                                        className="flex-1 min-w-0 text-left px-2.5 py-2 text-xs flex items-center justify-between gap-2"
+                                      >
+                                        <span className={cn('truncate', selected && 'font-semibold')}>
+                                          {v.name}
+                                        </span>
+                                        <span
+                                          className={cn(
+                                            'text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0',
+                                            selected
+                                              ? 'bg-[#111E32]/15 text-[#111E32]'
+                                              : 'bg-[#C5AA70]/25 text-[#E5C784]'
+                                          )}
+                                        >
+                                          {v.qualityLabel}
+                                        </span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onPreviewVoice(v.voiceURI)}
+                                        title="Escuchar muestra de voz"
+                                        aria-label={`Probar voz ${v.name}`}
+                                        className={cn(
+                                          'h-7 w-7 rounded-lg inline-flex items-center justify-center shrink-0 transition-colors',
+                                          selected
+                                            ? 'hover:bg-[#111E32]/15 text-[#111E32]'
+                                            : 'hover:bg-white/15 text-white/75'
+                                        )}
+                                      >
+                                        {sampling ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <Volume2 className="h-3.5 w-3.5" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            )}
+
                             {spanishVoices.length > 0 && (
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E5C784] px-2 pt-1">
-                                Voces en español
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#E5C784]/90 px-2 pt-2">
+                                Voces en español ({hasCloudNeuralVoices ? 'navegador' : 'disponibles'})
                               </p>
                             )}
-                            {spanishVoices.map((v) => (
-                              <button
-                                key={v.voiceURI}
-                                type="button"
-                                onClick={() => {
-                                  onSetSelectedVoiceURI(v.voiceURI);
-                                  setActivePopover(null);
-                                }}
-                                className={cn(
-                                  'w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors',
-                                  v.voiceURI === selectedVoiceURI
-                                    ? 'bg-[#E5C784] text-[#111E32] font-semibold'
-                                    : 'text-white/85 hover:bg-white/10'
-                                )}
-                              >
-                                <span className="truncate">{v.name}</span>
-                                <span className="text-[10px] opacity-70 shrink-0">{v.lang}</span>
-                              </button>
-                            ))}
-                            {otherVoices.length > 0 && (
-                              <>
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50 px-2 pt-2">
-                                  Otras voces
-                                </p>
-                                {otherVoices.slice(0, 12).map((v) => (
+                            {spanishVoices.map((v) => {
+                              const selected = v.voiceURI === selectedVoiceURI;
+                              const sampling = previewingVoiceURI === v.voiceURI;
+                              return (
+                                <div
+                                  key={v.voiceURI}
+                                  className={cn(
+                                    'flex items-center gap-1 rounded-xl pr-1 transition-colors',
+                                    selected
+                                      ? 'bg-[#E5C784] text-[#111E32]'
+                                      : 'text-white/85 hover:bg-white/10'
+                                  )}
+                                >
                                   <button
-                                    key={v.voiceURI}
                                     type="button"
                                     onClick={() => {
                                       onSetSelectedVoiceURI(v.voiceURI);
                                       setActivePopover(null);
                                     }}
+                                    className="flex-1 min-w-0 text-left px-2.5 py-2 text-xs flex items-center justify-between gap-2"
+                                  >
+                                    <span className={cn('truncate', selected && 'font-semibold')}>
+                                      {v.name.replace(/^Microsoft /i, '')}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        'text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0',
+                                        selected
+                                          ? 'bg-[#111E32]/15 text-[#111E32]'
+                                          : v.isNatural
+                                            ? 'bg-emerald-400/20 text-emerald-200'
+                                            : 'bg-white/10 text-white/60'
+                                      )}
+                                    >
+                                      {v.qualityLabel}
+                                    </span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onPreviewVoice(v.voiceURI)}
+                                    title="Escuchar muestra de voz"
+                                    aria-label={`Probar voz ${v.name}`}
                                     className={cn(
-                                      'w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors',
-                                      v.voiceURI === selectedVoiceURI
-                                        ? 'bg-[#E5C784] text-[#111E32] font-semibold'
-                                        : 'text-white/75 hover:bg-white/10'
+                                      'h-7 w-7 rounded-lg inline-flex items-center justify-center shrink-0 transition-colors',
+                                      selected
+                                        ? 'hover:bg-[#111E32]/15 text-[#111E32]'
+                                        : 'hover:bg-white/15 text-white/70'
                                     )}
                                   >
-                                    <span className="truncate">{v.name}</span>
-                                    <span className="text-[10px] opacity-65 shrink-0">{v.lang}</span>
+                                    {sampling ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Volume2 className="h-3.5 w-3.5" />
+                                    )}
                                   </button>
-                                ))}
+                                </div>
+                              );
+                            })}
+
+                            {otherVoices.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50 px-2 pt-2">
+                                  Otras voces
+                                </p>
+                                {otherVoices.slice(0, 10).map((v) => {
+                                  const selected = v.voiceURI === selectedVoiceURI;
+                                  return (
+                                    <button
+                                      key={v.voiceURI}
+                                      type="button"
+                                      onClick={() => {
+                                        onSetSelectedVoiceURI(v.voiceURI);
+                                        setActivePopover(null);
+                                      }}
+                                      className={cn(
+                                        'w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors',
+                                        selected
+                                          ? 'bg-[#E5C784] text-[#111E32] font-semibold'
+                                          : 'text-white/75 hover:bg-white/10'
+                                      )}
+                                    >
+                                      <span className="truncate">{v.name}</span>
+                                      <span className="text-[10px] opacity-65 shrink-0">{v.lang}</span>
+                                    </button>
+                                  );
+                                })}
                               </>
                             )}
                           </>

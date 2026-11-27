@@ -960,6 +960,9 @@ export function PdfReaderPage() {
           voiceOptions={audiobook.voiceOptions}
           selectedVoiceURI={audiobook.selectedVoiceURI}
           onSetSelectedVoiceURI={audiobook.setSelectedVoiceURI}
+          onPreviewVoice={audiobook.previewVoice}
+          previewingVoiceURI={audiobook.previewingVoiceURI}
+          hasCloudNeuralVoices={audiobook.hasCloudNeuralVoices}
           sleepTimerOption={audiobook.sleepTimerOption}
           sleepRemainingSec={audiobook.sleepRemainingSec}
           onSetSleepTimer={audiobook.setSleepTimer}
