@@ -3,13 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { m } from 'motion/react';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from 'lucide-react';
-import { AuthLayout } from './AuthLayout';
 import { PasswordStrength } from './PasswordStrength';
 import { useAuth } from './AuthContext';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
+import { AuthInput } from './components/AuthInput';
+import { AuthButton } from './components/AuthButton';
 import { useToast } from '../../components/feedback/ToastProvider';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { STAGGER_CONTAINER_VARIANTS, STAGGER_ITEM_VARIANTS } from '../../utils/motion';
 
 const schema = z
   .object({
@@ -31,6 +33,8 @@ export function ResetPasswordPage() {
   const { updatePassword } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
+  const reducedMotion = useReducedMotion();
+
   const [showPassword, setShowPassword] = useState(false);
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -45,6 +49,7 @@ export function ResetPasswordPage() {
   const passwordVal = watch('password', '');
 
   const onSubmit = async ({ password }: FormValues) => {
+    if (isSubmitting) return;
     setServerError(null);
     try {
       await updatePassword(password);
@@ -57,77 +62,102 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <AuthLayout
-      title="Restablecer contraseña"
-      subtitle="Define una nueva contraseña segura para tu cuenta de MICOLE LIBRARY."
+    <m.div
+      variants={STAGGER_CONTAINER_VARIANTS}
+      initial={reducedMotion ? false : 'hidden'}
+      animate="visible"
+      className="space-y-6"
     >
+      <m.div variants={STAGGER_ITEM_VARIANTS} className="text-center space-y-1.5">
+        <h1 className="text-[26px] sm:text-[31px] font-bold text-[#111E32] tracking-[-0.02em] leading-tight">
+          Restablecer contraseña
+        </h1>
+        <p className="text-sm text-[#667085]">
+          Define una nueva contraseña segura para tu cuenta de MICOLE LIBRARY.
+        </p>
+      </m.div>
+
       {done ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 space-y-3">
+        <m.div
+          initial={reducedMotion ? false : { opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 space-y-3"
+        >
           <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-            Contraseña actualizada
+            <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span>Contraseña actualizada</span>
           </div>
-          <p className="text-xs text-emerald-900/80">
+          <p className="text-xs sm:text-[13px] text-emerald-900/80">
             Tu contraseña ha sido actualizada. Te redirigiremos al inicio de sesión.
           </p>
-          <Link to="/iniciar-sesion" className="block">
-            <Button variant="primary" size="sm" className="w-full">
-              Ir a iniciar sesión
-            </Button>
+          <Link to="/iniciar-sesion" className="block pt-1">
+            <AuthButton type="button">Ir a iniciar sesión</AuthButton>
           </Link>
-        </div>
+        </m.div>
       ) : (
         <>
           {serverError && (
-            <div
+            <m.div
+              initial={reducedMotion ? false : { opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
               role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs text-red-700 flex items-start gap-2.5"
+              className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 flex items-start gap-2.5"
             >
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
               <span>{serverError}</span>
-            </div>
+            </m.div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div>
-              <Input
+            <m.div variants={STAGGER_ITEM_VARIANTS} className="space-y-1">
+              <AuthInput
+                id="reset-password"
                 label="Nueva contraseña"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
-                placeholder="Mínimo 8 caracteres"
-                leftIcon={<Lock className="h-4 w-4" />}
+                placeholder="Nueva contraseña (mín. 8 caracteres)"
+                leftIcon={<Lock className="h-[18px] w-[18px]" />}
+                error={errors.password?.message}
                 rightSlot={
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    className="p-1.5 text-ink-muted hover:text-navy"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-[#667085] hover:text-[#111E32] transition-colors rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5AA70]"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-[18px] w-[18px]" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-[18px] w-[18px]" aria-hidden="true" />
+                    )}
                   </button>
                 }
-                error={errors.password?.message}
                 {...register('password')}
               />
               <PasswordStrength password={passwordVal} />
-            </div>
+            </m.div>
 
-            <Input
-              label="Confirmar nueva contraseña"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="new-password"
-              placeholder="Repite tu contraseña"
-              leftIcon={<Lock className="h-4 w-4" />}
-              error={errors.confirmPassword?.message}
-              {...register('confirmPassword')}
-            />
+            <m.div variants={STAGGER_ITEM_VARIANTS}>
+              <AuthInput
+                id="reset-confirm-password"
+                label="Confirmar nueva contraseña"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                placeholder="Confirmar nueva contraseña"
+                leftIcon={<Lock className="h-[18px] w-[18px]" />}
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
+              />
+            </m.div>
 
-            <Button type="submit" variant="primary" size="lg" className="w-full" loading={isSubmitting}>
-              Guardar nueva contraseña
-            </Button>
+            <m.div variants={STAGGER_ITEM_VARIANTS} className="pt-1">
+              <AuthButton type="submit" loading={isSubmitting}>
+                Guardar nueva contraseña
+              </AuthButton>
+            </m.div>
           </form>
         </>
       )}
-    </AuthLayout>
+    </m.div>
   );
 }

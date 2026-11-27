@@ -4,6 +4,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { AppShell } from '../components/layout/AppShell';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { AdminRoute } from '../features/auth/AdminRoute';
+import { AuthLayout } from '../features/auth/AuthLayout';
 import { BookGridSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { Button } from '../components/ui/Button';
@@ -153,11 +154,13 @@ export function AppRouter() {
         <Routes>
           {/* Full-screen routes outside main shell */}
           <Route path="/leer/:id" element={<PdfReaderPage />} />
-          <Route path="/iniciar-sesion" element={<LoginPage />} />
-          <Route path="/crear-cuenta" element={<RegisterPage />} />
-          <Route path="/recuperar-contrasena" element={<ForgotPasswordPage />} />
-          <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
-          <Route path="/confirmar-correo" element={<EmailConfirmPage />} />
+          <Route element={<AuthLayout />}>
+            <Route path="/iniciar-sesion" element={<LoginPage />} />
+            <Route path="/crear-cuenta" element={<RegisterPage />} />
+            <Route path="/recuperar-contrasena" element={<ForgotPasswordPage />} />
+            <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
+            <Route path="/confirmar-correo" element={<EmailConfirmPage />} />
+          </Route>
 
           {/* Main editorial shell */}
           <Route element={<ShellLayout />}>

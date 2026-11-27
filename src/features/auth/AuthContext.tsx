@@ -13,6 +13,18 @@ import { fetchUserProfile } from '../../services/profileService';
 import type { UserProfile, UserRole } from '../../types';
 
 const DEMO_SESSION_KEY = 'lexlibrary:v2:demo-auth-active';
+const SESSION_ONLY_KEY = 'micole:auth:session-only';
+const TAB_ALIVE_KEY = 'micole:auth:tab-alive';
+const REMEMBER_PREF_KEY = 'micole:auth:remember-pref';
+
+export function getRememberMePreference(): boolean {
+  try {
+    const stored = localStorage.getItem(REMEMBER_PREF_KEY);
+    return stored === null ? true : stored === 'true';
+  } catch {
+    return true;
+  }
+}
 
 export interface AuthContextValue {
   user: User | null;
@@ -25,7 +37,11 @@ export interface AuthContextValue {
   isDemoSession: boolean;
   isLoading: boolean;
   isSupabaseConfigured: boolean;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (
+    email: string,
+    password: string,
+    options?: { rememberMe?: boolean }
+  ) => Promise<void>;
   signUpWithEmail: (payload: {
     email: string;
     password: string;
@@ -129,6 +145,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const isSessionOnly = (() => {
+        try {
+          return (
+            localStorage.getItem(SESSION_ONLY_KEY) === 'true' &&
+            !sessionStorage.getItem(TAB_ALIVE_KEY)
+          );
+        } catch {
+          return false;
+        }
+      })();
+
+      if (isSessionOnly) {
+        await supabase.auth.signOut();
+        try {
+          localStorage.removeItem(SESSION_ONLY_KEY);
+        } catch {
+          // ignore storage errors
+        }
+        if (!active) return;
+        setSession(null);
+        setProfile(null);
+        setIsLoading(false);
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       if (!active) return;
       setSession(data.session ?? null);
@@ -187,15 +228,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile(userId, user?.email ?? profile?.email ?? '');
   }, [loadProfile, profile?.email, user?.email, userId]);
 
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    if (!isSupabaseConfigured || !supabase) {
-      throw new Error(
-        'Configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY para iniciar sesión con Supabase Auth.'
-      );
-    }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(mapAuthErrorMessage(error.message));
-  }, []);
+  const signInWithEmail = useCallback(
+    async (email: string, password: string, options?: { rememberMe?: boolean }) => {
+      if (!isSupabaseConfigured || !supabase) {
+        throw new Error(
+          'Configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY para iniciar sesión con Supabase Auth.'
+        );
+      }
+      const rememberMe = options?.rememberMe ?? true;
+      try {
+        localStorage.setItem(REMEMBER_PREF_KEY, String(rememberMe));
+        if (rememberMe) {
+          localStorage.removeItem(SESSION_ONLY_KEY);
+          sessionStorage.removeItem(TAB_ALIVE_KEY);
+        } else {
+          localStorage.setItem(SESSION_ONLY_KEY, 'true');
+          sessionStorage.setItem(TAB_ALIVE_KEY, 'true');
+        }
+      } catch {
+        // ignore storage errors
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(mapAuthErrorMessage(error.message));
+    },
+    []
+  );
 
   const signUpWithEmail = useCallback(
     async ({
@@ -282,6 +339,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (supabase) {
       await supabase.auth.signOut();
+    }
+    try {
+      localStorage.removeItem(SESSION_ONLY_KEY);
+      sessionStorage.removeItem(TAB_ALIVE_KEY);
+    } catch {
+      // ignore storage errors
     }
     setSession(null);
     setProfile(null);
