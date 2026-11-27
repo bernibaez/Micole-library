@@ -38,6 +38,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { QrShareModal } from '../../components/ui/QrShareModal';
 import { EmptyState } from '../../components/feedback/EmptyState';
 import { cn } from '../../utils/cn';
 import { getDocumentTypeLabel, isPdfDocument } from '../../utils/format';
@@ -95,6 +96,7 @@ export function PdfReaderPage() {
     loading: boolean;
   }>({ term: '', results: [], loading: false });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [qrOpen, setQrOpen] = useState<boolean>(false);
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({
     width: 820,
@@ -737,6 +739,7 @@ export function PdfReaderPage() {
               audiobook.setIsExpanded(!audiobook.isExpanded);
             }
           }}
+          onOpenQr={() => setQrOpen(true)}
         />
       )}
 
@@ -862,6 +865,38 @@ export function PdfReaderPage() {
             </div>
           )}
         </div>
+
+        {/* QR Share Modal (continue exact page or audiobook on mobile) */}
+        <QrShareModal
+          open={qrOpen}
+          onClose={() => setQrOpen(false)}
+          title={book.title}
+          subtitle={book.author}
+          defaultModeId="page"
+          modes={[
+            {
+              id: 'page',
+              label: `Pág. ${currentPage}`,
+              path: `/leer/${book.id}?pagina=${currentPage}`,
+              badge: `Página ${currentPage}${numPages ? ` de ${numPages}` : ''}`,
+              hint: 'Escanea para abrir exactamente esta página en tu teléfono o compartir la cita.',
+            },
+            {
+              id: 'audio',
+              label: 'Audiolibro',
+              path: `/leer/${book.id}?pagina=${currentPage}&audio=1`,
+              badge: `Audiolibro · Pág. ${currentPage}`,
+              hint: 'Escanea para continuar escuchando desde esta página en tu móvil.',
+            },
+            {
+              id: 'detail',
+              label: 'Ficha',
+              path: `/libro/${book.id}`,
+              badge: book.category,
+              hint: 'Escanea para abrir la ficha bibliográfica completa del documento.',
+            },
+          ]}
+        />
 
         {/* Audiobook Floating Dock & Full Studio Mode */}
         <AudiobookPlayer

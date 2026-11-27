@@ -12,6 +12,7 @@ import {
   Headphones,
   Heart,
   Lock,
+  QrCode,
   Share2,
 } from 'lucide-react';
 import {
@@ -29,6 +30,7 @@ import { QuickPreviewModal } from './QuickPreviewModal';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { QrShareModal } from '../../components/ui/QrShareModal';
 import { BookDetailSkeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/feedback/EmptyState';
 import {
@@ -76,6 +78,7 @@ export function BookDetailPage() {
 
   const [previewTarget, setPreviewTarget] = useState<Book | null>(null);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [downloading, setDownloading] = useState(false);
 
@@ -419,6 +422,16 @@ export function BookDetailPage() {
               >
                 <Share2 className="h-4 w-4" />
               </button>
+
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(true)}
+                aria-label="Mostrar código QR del documento"
+                title="Código QR"
+                className="h-10 w-10 rounded-full border border-line-strong bg-white text-navy hover:bg-paper-warm inline-flex items-center justify-center transition-all"
+              >
+                <QrCode className="h-4 w-4" />
+              </button>
             </div>
           </m.div>
 
@@ -502,6 +515,41 @@ export function BookDetailPage() {
         onToggleLibrary={handleToggleLibrary}
         onToggleFavorite={handleToggleFavorite}
         onDownload={(b) => handleDownloadBook(b)}
+      />
+
+      {/* Branded Editorial QR Share Modal */}
+      <QrShareModal
+        open={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        title={book.title}
+        subtitle={`${book.author}${book.year ? ` · ${book.year}` : ''}`}
+        modes={[
+          {
+            id: 'detail',
+            label: 'Ficha',
+            path: `/libro/${book.id}`,
+            badge: book.category,
+            hint: 'Abre la ficha bibliográfica completa en MICOLE LIBRARY.',
+          },
+          ...(availability.canRead
+            ? [
+                {
+                  id: 'reader',
+                  label: 'Lector PDF',
+                  path: `/leer/${book.id}`,
+                  badge: 'Lectura directa',
+                  hint: 'Abre el documento directamente en el visor PDF.',
+                },
+                {
+                  id: 'audio',
+                  label: 'Audiolibro',
+                  path: `/leer/${book.id}?audio=1`,
+                  badge: 'Modo audiolibro',
+                  hint: 'Abre el libro directamente en el estudio de audiolibro.',
+                },
+              ]
+            : []),
+        ]}
       />
 
       {/* Add to Collection Modal */}

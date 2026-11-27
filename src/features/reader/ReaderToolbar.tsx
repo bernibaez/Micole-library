@@ -13,6 +13,7 @@ import {
   Minimize2,
   MoreHorizontal,
   PanelLeft,
+  QrCode,
   RotateCw,
   Search,
   StretchHorizontal,
@@ -51,6 +52,7 @@ interface ReaderToolbarProps {
   audioOpen?: boolean;
   audioPlaying?: boolean;
   onToggleAudio?: () => void;
+  onOpenQr?: () => void;
 }
 
 export function ReaderToolbar({
@@ -79,6 +81,7 @@ export function ReaderToolbar({
   audioOpen = false,
   audioPlaying = false,
   onToggleAudio,
+  onOpenQr,
 }: ReaderToolbarProps) {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -457,6 +460,20 @@ export function ReaderToolbar({
                     )}
                     {isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                   </button>
+
+                  {onOpenQr && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        onOpenQr();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-current/5 text-left"
+                    >
+                      <QrCode className="h-4 w-4 text-gold-dark dark:text-gold" />
+                      Código QR (seguir en móvil)
+                    </button>
+                  )}
 
                   {onOpenNewTab && (
                     <button
