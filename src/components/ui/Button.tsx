@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { EASE_EDITORIAL, TRANSITION_MICRO } from '../../utils/motion';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold' | 'forest';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,22 +15,24 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#101D35] text-white border border-[#101D35] hover:bg-[#1C3152] shadow-sm',
+    'bg-[#121D32] text-white border border-[#121D32] hover:bg-[#1D2E4D] shadow-subtle',
   secondary:
-    'bg-white text-[#101D35] border border-[#D3D9E3] hover:bg-[#F4F6F9]',
+    'bg-white text-[#121D32] border border-[#D4CFC2] hover:bg-[#EFECE4] hover:border-[#121D32]/25',
   ghost:
-    'bg-transparent text-[#343B49] border border-transparent hover:bg-[#F4F6F9] hover:text-[#101D35]',
+    'bg-transparent text-ink border border-transparent hover:bg-[#121D32]/[0.06] hover:text-[#121D32]',
   danger:
     'bg-red-600 text-white border border-red-600 hover:bg-red-700',
   gold:
-    'bg-[#C5A15B] text-[#101D35] border border-[#C5A15B] hover:bg-[#b8944f] font-semibold',
+    'bg-[#C1A15C] text-[#121D32] border border-[#C1A15C] hover:bg-[#b4934e] font-semibold shadow-subtle',
+  forest:
+    'bg-[#294C43] text-white border border-[#294C43] hover:bg-[#1F3B34] shadow-subtle',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-9 px-3.5 text-xs gap-1.5 rounded-lg',
-  md: 'h-10 px-4 text-sm gap-2 rounded-lg',
+  sm: 'h-9 px-3.5 text-xs gap-1.5 rounded-xl',
+  md: 'h-10 px-4 text-sm gap-2 rounded-xl',
   lg: 'h-11 px-5 text-sm gap-2 rounded-xl',
-  icon: 'h-10 w-10 rounded-lg justify-center',
+  icon: 'h-10 w-10 rounded-xl justify-center',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

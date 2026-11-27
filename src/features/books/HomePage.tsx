@@ -4,8 +4,8 @@ import { m } from 'motion/react';
 import {
   ArrowRight,
   BookOpen,
+  ChevronRight,
   Scale,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -20,9 +20,10 @@ import { RecentFocusCarousel } from './RecentFocusCarousel';
 import { BookShelf } from './BookShelf';
 import { QuickPreviewModal } from './QuickPreviewModal';
 import { BookCover } from './BookCover';
-import { BookGridSkeleton } from '../../components/ui/Skeleton';
+import { Badge } from '../../components/ui/Badge';
+import { HomeDashboardSkeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/feedback/ErrorState';
-import { getGreeting } from '../../utils/format';
+import { getDocumentTypeLabel, getGreeting } from '../../utils/format';
 import {
   HERO_CONTAINER_VARIANTS,
   HERO_ITEM_VARIANTS,
@@ -59,12 +60,12 @@ export function HomePage() {
 
   const featuredBooks = useMemo(() => {
     const flagged = books.filter((b) => b.featured);
-    return (flagged.length >= 4 ? flagged : books).slice(0, 8);
+    return (flagged.length >= 4 ? flagged : books).slice(0, 10);
   }, [books]);
 
   const recommendedBooks = useMemo(() => {
     if (!isAuthenticated) {
-      return [...books].sort((a, b) => b.downloads - a.downloads).slice(0, 8);
+      return [...books].sort((a, b) => b.downloads - a.downloads).slice(0, 10);
     }
     const favoriteCats = new Set(
       books
@@ -72,11 +73,11 @@ export function HomePage() {
         .map((b) => b.category)
     );
     if (favoriteCats.size === 0) {
-      return [...books].slice(0, 8);
+      return [...books].slice(0, 10);
     }
     const matching = books.filter((b) => favoriteCats.has(b.category));
     const rest = books.filter((b) => !favoriteCats.has(b.category));
-    return [...matching, ...rest].slice(0, 8);
+    return [...matching, ...rest].slice(0, 10);
   }, [books, isAuthenticated, isFavorite, isInLibrary]);
 
   const heroRecommendations = useMemo(() => {
@@ -88,7 +89,7 @@ export function HomePage() {
         seen.add(b.id);
         combined.push(b);
       }
-      if (combined.length >= 10) break;
+      if (combined.length >= 12) break;
     }
     return combined;
   }, [books, featuredBooks, recommendedBooks]);
@@ -101,11 +102,11 @@ export function HomePage() {
         if (dateB !== dateA) return dateB - dateA;
         return (b.year ?? 0) - (a.year ?? 0);
       })
-      .slice(0, 8);
+      .slice(0, 10);
   }, [books]);
 
   const mostConsulted = useMemo(
-    () => [...books].sort((a, b) => b.downloads - a.downloads).slice(0, 8),
+    () => [...books].sort((a, b) => b.downloads - a.downloads).slice(0, 10),
     [books]
   );
 
@@ -117,6 +118,17 @@ export function HomePage() {
           b.document_type === 'codigo' ||
           b.category.toLowerCase().includes('legislación') ||
           b.category.toLowerCase().includes('código')
+      ),
+    [books]
+  );
+
+  const jurisprudenceBooks = useMemo(
+    () =>
+      books.filter(
+        (b) =>
+          b.document_type === 'jurisprudencia' ||
+          b.document_type === 'sentencia' ||
+          b.category.toLowerCase().includes('jurisprudencia')
       ),
     [books]
   );
@@ -156,12 +168,13 @@ export function HomePage() {
       const hasFile =
         Boolean(book.file_url || book.drive_file_id) && book.allow_preview !== false;
       return {
+        mode: 'active' as const,
         book,
         to: hasFile ? `/leer/${book.id}` : `/libro/${book.id}`,
         percent: Math.min(100, Math.max(4, Math.round(progress.progress_percent))),
         pageLabel: progress.total_pages
-          ? `Pág. ${progress.current_page} de ${progress.total_pages}`
-          : `Pág. ${progress.current_page}`,
+          ? `Página ${progress.current_page} de ${progress.total_pages}`
+          : `Página ${progress.current_page}`,
       };
     }
 
@@ -174,14 +187,15 @@ export function HomePage() {
         const computedPct =
           book.pages && book.pages > 0
             ? Math.min(98, Math.max(8, Math.round((recent.last_page / book.pages) * 100)))
-            : 18;
+            : 16;
         return {
+          mode: 'recent' as const,
           book,
           to: hasFile ? `/leer/${book.id}` : `/libro/${book.id}`,
           percent: computedPct,
           pageLabel: book.pages
-            ? `Pág. ${recent.last_page} de ${book.pages}`
-            : `Pág. ${recent.last_page}`,
+            ? `Página ${recent.last_page} de ${book.pages}`
+            : `Página ${recent.last_page}`,
         };
       }
     }
@@ -192,36 +206,29 @@ export function HomePage() {
       Boolean(fallbackBook.file_url || fallbackBook.drive_file_id) &&
       fallbackBook.allow_preview !== false;
     return {
+      mode: 'suggested' as const,
       book: fallbackBook,
       to: hasFile ? `/leer/${fallbackBook.id}` : `/libro/${fallbackBook.id}`,
-      percent: 12,
-      pageLabel: fallbackBook.pages ? `Pág. 1 de ${fallbackBook.pages}` : fallbackBook.category,
+      percent: 0,
+      pageLabel: fallbackBook.pages
+        ? `${fallbackBook.pages} páginas · Lectura inmediata`
+        : fallbackBook.category,
     };
   })();
 
-  const jurisprudenceBooks = useMemo(
-    () =>
-      books.filter(
-        (b) =>
-          b.document_type === 'jurisprudencia' ||
-          b.document_type === 'sentencia' ||
-          b.category.toLowerCase().includes('jurisprudencia')
-      ),
-    [books]
-  );
+  const secondaryReadingItems = continueReading.slice(1, 3);
 
   if (isLoading) {
     return (
-      <div className="pt-20 px-5 sm:px-8 lg:px-12 max-w-[1320px] mx-auto space-y-8">
-        <div className="h-64 rounded-3xl bg-sand animate-pulse" />
-        <BookGridSkeleton count={4} />
+      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-10 pt-5 sm:pt-7">
+        <HomeDashboardSkeleton />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="pt-24 px-5 sm:px-8 lg:px-12 max-w-[1320px] mx-auto">
+      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-10 pt-10">
         <ErrorState onRetry={() => void refetch()} />
       </div>
     );
@@ -230,291 +237,255 @@ export function HomePage() {
   const firstName = profile?.first_name?.trim();
 
   return (
-    <div className="w-full">
-      {/* Clean Editorial Discover Zone */}
-      <section className="relative bg-white">
-        {/* Foreground Content */}
-        <div className="relative z-10 max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-12 pt-16 sm:pt-[76px]">
-          {/* Top Discover Header + Search + Continue-Reading Book + 3D Legal Avatar */}
-          <div className="flex flex-col lg:flex-row lg:items-end gap-5 lg:gap-5 xl:gap-7">
-            <m.div
-              variants={HERO_CONTAINER_VARIANTS}
-              initial="hidden"
-              animate="visible"
-              className="w-full lg:flex-1 max-w-[560px] min-w-0 space-y-3 pb-1 lg:pb-6"
-            >
-              <m.div
-                variants={HERO_ITEM_VARIANTS}
-                className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-dark"
-              >
-                <Scale className="h-3.5 w-3.5" />
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-10 pt-4 sm:pt-6 space-y-9 sm:space-y-11">
+      {/* Editorial Top Header + Unified Search */}
+      <m.section
+        variants={HERO_CONTAINER_VARIANTS}
+        initial="hidden"
+        animate="visible"
+        className="space-y-5"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <m.div variants={HERO_ITEM_VARIANTS} className="space-y-1 min-w-0">
+            <p className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-gold-dark">
+              <Scale className="h-3 w-3 shrink-0" />
+              <span className="truncate">
                 {isAuthenticated && firstName
-                  ? `${getGreeting()}, ${firstName} · Biblioteca Jurídica Virtual`
-                  : 'Biblioteca Jurídica Virtual · República Dominicana'}
-              </m.div>
+                  ? `${getGreeting()}, ${firstName} · Biblioteca Jurídica`
+                  : 'Biblioteca Jurídica Digital · República Dominicana'}
+              </span>
+            </p>
+            <h1 className="font-editorial text-3xl sm:text-[36px] font-semibold text-navy tracking-tight leading-[1.12]">
+              {continueReading.length > 0 ? 'Leyendo ahora' : 'Descubrir'}
+            </h1>
+          </m.div>
 
-              <m.h1
-                variants={HERO_ITEM_VARIANTS}
-                className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-navy tracking-tight leading-[1.1]"
-              >
-                Descubrir
-              </m.h1>
+          <m.div variants={HERO_ITEM_VARIANTS} className="w-full lg:max-w-[520px]">
+            <DiscoverSearchBar categories={topCategories} className="max-w-none" />
+          </m.div>
+        </div>
 
-              <m.p
-                variants={HERO_ITEM_VARIANTS}
-                className="text-sm sm:text-[15px] text-ink-muted max-w-xl leading-relaxed"
-              >
-                Legislación, jurisprudencia, doctrina y formación jurídica en MICOLE LIBRARY.
-              </m.p>
-
-              <m.div variants={HERO_ITEM_VARIANTS} className="pt-1.5">
-                <DiscoverSearchBar categories={topCategories} />
-              </m.div>
-            </m.div>
-
-            {/* Right Visual Group: Lowered "Seguir leyendo" Book + Avatar closely paired beside it */}
-            <div className="flex items-end justify-center lg:flex-1 lg:justify-start gap-4 sm:gap-6 lg:gap-3 xl:gap-5 lg:pl-2 xl:pl-4 pb-1">
-              {heroReadingCard && (
-                <m.div
-                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.45, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 -mb-2 lg:-mb-3"
+        {/* Unified Editorial "Lectura actual" Hero Card + Micole Mascot */}
+        {heroReadingCard && (
+          <m.div
+            variants={HERO_ITEM_VARIANTS}
+            className="relative rounded-3xl bg-white border border-line/90 shadow-subtle overflow-hidden"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] items-center gap-5 px-5 sm:px-7 lg:px-9 py-5 sm:py-6">
+              {/* Left + Center: 3D Book + Editorial Reading Context */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-7 min-w-0">
+                <Link
+                  to={heroReadingCard.to}
+                  className="group relative w-[106px] sm:w-[118px] lg:w-[126px] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-book"
+                  title={heroReadingCard.book.title}
                 >
-                  <Link
-                    to={heroReadingCard.to}
-                    className="group flex flex-col items-center w-[98px] sm:w-[108px] lg:w-[112px] xl:w-[122px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-2xl"
-                    title={`Seguir leyendo: ${heroReadingCard.book.title}`}
-                  >
-                    {/* Editorial "Seguir leyendo" pill above the book */}
-                    <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-sand-soft border border-gold/45 px-2.5 py-0.5 text-[10.5px] font-semibold text-navy shadow-subtle group-hover:bg-navy group-hover:text-white group-hover:border-navy transition-colors whitespace-nowrap">
-                      <BookOpen className="h-3 w-3 text-gold-dark group-hover:text-gold shrink-0 transition-colors" />
-                      <span>Seguir leyendo</span>
+                  <BookCover
+                    book={heroReadingCard.book}
+                    size="md"
+                    progressPercent={heroReadingCard.percent > 0 ? heroReadingCard.percent : undefined}
+                    className="shadow-editorial-cover group-hover:shadow-cover-hover"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none mx-3 mt-1.5 h-2 rounded-full bg-navy/14 blur-md opacity-80"
+                  />
+                </Link>
+
+                <div className="min-w-0 flex-1 text-center sm:text-left space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-gold-dark">
+                      {heroReadingCard.mode === 'active'
+                        ? 'Lectura actual'
+                        : heroReadingCard.mode === 'recent'
+                          ? 'Última consulta'
+                          : 'Lectura destacada'}
                     </span>
+                    {heroReadingCard.book.validity_status === 'vigente' && (
+                      <Badge variant="forest" className="text-[10px] px-2 py-0.5">
+                        Vigente
+                      </Badge>
+                    )}
+                    <span className="text-[11px] text-ink-subtle">
+                      {getDocumentTypeLabel(heroReadingCard.book.document_type)}
+                    </span>
+                  </div>
 
-                    {/* 3D Hardcover Book */}
-                    <div className="w-full transition-transform duration-300 ease-out group-hover:-translate-y-1.5">
-                      <BookCover
-                        book={heroReadingCard.book}
-                        size="sm"
-                        progressPercent={heroReadingCard.percent}
-                        className="transition-shadow duration-300 group-hover:shadow-cover-hover"
-                      />
-                    </div>
+                  <Link
+                    to={`/libro/${heroReadingCard.book.id}`}
+                    className="block font-editorial text-xl sm:text-2xl lg:text-[26px] font-semibold text-navy hover:text-forest leading-[1.2] line-clamp-2 transition-colors"
+                  >
+                    {heroReadingCard.book.title}
+                  </Link>
 
-                    {/* Soft grounded shadow beneath the physical book */}
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none mx-3 mt-1 h-1.5 w-[80%] rounded-full bg-navy/12 blur-md opacity-80 group-hover:opacity-100 transition-opacity"
-                    />
+                  <p className="text-xs sm:text-sm text-ink-muted truncate">
+                    {heroReadingCard.book.author}
+                    {heroReadingCard.book.category ? ` · ${heroReadingCard.book.category}` : ''}
+                  </p>
 
-                    {/* Reading Progress Bar + Page/Percent */}
-                    <div className="mt-1.5 w-full px-0.5 space-y-1">
-                      <div className="h-1.5 w-full rounded-full bg-surface-tertiary overflow-hidden">
+                  {/* Reading Progress Track */}
+                  <div className="max-w-md mx-auto sm:mx-0 space-y-1.5 pt-0.5">
+                    {heroReadingCard.percent > 0 && (
+                      <div className="h-1.5 w-full rounded-full bg-paper-warm overflow-hidden">
                         <div
                           className="h-full rounded-full bg-gold transition-[width] duration-300"
                           style={{ width: `${heroReadingCard.percent}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between gap-1 text-[10px]">
-                        <span className="text-ink-muted truncate tabular-nums">
-                          {heroReadingCard.pageLabel}
-                        </span>
-                        <span className="font-bold text-navy tabular-nums shrink-0 inline-flex items-center gap-0.5">
+                    )}
+                    <div className="flex items-center justify-center sm:justify-between gap-2 text-xs text-ink-muted tabular-nums">
+                      <span>{heroReadingCard.pageLabel}</span>
+                      {heroReadingCard.percent > 0 && (
+                        <span className="font-semibold text-navy">
                           {heroReadingCard.percent}%
-                          <ArrowRight className="h-2.5 w-2.5 text-gold-dark group-hover:translate-x-0.5 transition-transform" />
                         </span>
-                      </div>
-                    </div>
-                  </Link>
-                </m.div>
-              )}
-
-              {/* Animated LexLibrary Mascot anchored on the right */}
-              <div className="flex items-end justify-end shrink-0 relative">
-                <LexMascot
-                  isAuthenticated={isAuthenticated}
-                  sessionKey={userId}
-                  userName={firstName}
-                  sizeClassName="h-[220px] sm:h-[246px] lg:h-[264px] xl:h-[298px]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dynamic Animated Discover Book Carousel (exclusive to Discover page) */}
-          <DiscoverBookCarousel
-            title="Libros recomendados"
-            subtitle="Obras jurídicas destacadas listas para lectura inmediata en línea."
-            seeAllTo="/explorar?orden=popular"
-            books={heroRecommendations}
-            isInLibrary={isInLibrary}
-            isFavorite={isFavorite}
-            getProgress={getProgress}
-            onToggleLibrary={handleToggleLibrary}
-            onToggleFavorite={handleToggleFavorite}
-            onPreview={setPreviewBook}
-          />
-        </div>
-      </section>
-
-      {/* Pure White Editorial Lower Canvas */}
-      <div className="max-w-[1320px] mx-auto px-5 sm:px-8 lg:px-12 mt-11 sm:mt-14 space-y-12 sm:space-y-14">
-        {/* Book Category Pedestal Cards (Inspired by reference Book Category row) */}
-        {categoryShowcases.length > 0 && (
-          <m.section
-            variants={SCROLL_REVEAL_VARIANTS}
-            initial="hidden"
-            whileInView="visible"
-            viewport={VIEWPORT_ONCE}
-            className="space-y-5"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-navy tracking-tight">
-                  Categorías jurídicas
-                </h2>
-                <p className="text-xs sm:text-sm text-ink-muted mt-0.5">
-                  Explora la colección según tu materia de estudio o investigación.
-                </p>
-              </div>
-              <Link
-                to="/categorias"
-                aria-label="Ver todas las categorías"
-                title="Ver todas las categorías"
-                className="h-9 w-9 rounded-xl border border-line bg-white text-navy hover:bg-sand-soft hover:border-navy/25 inline-flex items-center justify-center transition-colors shadow-subtle shrink-0"
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-9 pt-5">
-              {categoryShowcases.map(({ category, count, coverBook }) => (
-                <Link
-                  key={category.id}
-                  to={`/explorar?categoria=${encodeURIComponent(category.name)}`}
-                  className="group block text-center"
-                >
-                  {/* Soft Pedestal Tray with Floating Book Cover */}
-                  <div className="relative h-24 sm:h-28 rounded-2xl bg-[#F4F5F7] group-hover:bg-sand-soft border border-transparent group-hover:border-sand-deep/50 transition-colors duration-200 flex items-end justify-center pb-3">
-                    <div className="w-[68px] sm:w-[78px] -mt-7 transition-transform duration-200 ease-out group-hover:-translate-y-1.5">
-                      {coverBook ? (
-                        <BookCover
-                          book={coverBook}
-                          size="sm"
-                          className="rounded-[6px] shadow-cover group-hover:shadow-cover-hover"
-                        />
-                      ) : (
-                        <div className="aspect-[2/3] w-full rounded-[6px] bg-gradient-to-br from-navy to-navy-secondary shadow-cover flex flex-col items-center justify-center p-2 text-gold">
-                          <Scale className="h-5 w-5" strokeWidth={1.6} />
-                          <span className="mt-1.5 text-[7.5px] font-semibold uppercase tracking-widest text-white/80 line-clamp-1">
-                            MICOLE
-                          </span>
-                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Centered Category Label */}
-                  <p className="mt-3 text-xs sm:text-sm font-semibold text-navy group-hover:text-gold-dark transition-colors line-clamp-1 px-1">
+                  {/* Primary Action + Secondary Quick Switch */}
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                    <Link
+                      to={heroReadingCard.to}
+                      className="inline-flex items-center gap-2 h-9 sm:h-10 px-5 rounded-full bg-navy text-white text-xs sm:text-[13px] font-semibold hover:bg-navy-secondary active:scale-[0.98] transition-all shadow-subtle"
+                    >
+                      <BookOpen className="h-3.5 w-3.5 text-gold" />
+                      {heroReadingCard.mode === 'suggested' ? 'Comenzar lectura' : 'Continuar lectura'}
+                    </Link>
+
+                    <Link
+                      to={`/libro/${heroReadingCard.book.id}`}
+                      className="inline-flex items-center gap-1 h-9 sm:h-10 px-4 rounded-full border border-line-strong bg-white text-navy text-xs sm:text-[13px] font-medium hover:bg-paper-warm transition-colors"
+                    >
+                      Ver ficha
+                      <ArrowRight className="h-3.5 w-3.5 text-ink-muted" />
+                    </Link>
+                  </div>
+
+                  {/* Additional in-progress books (keeps full multi-reading access without duplicating a whole section) */}
+                  {secondaryReadingItems.length > 0 && (
+                    <div className="pt-2.5 mt-2 border-t border-line/70 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <span className="text-[11px] font-medium text-ink-subtle">
+                        También leyendo:
+                      </span>
+                      {secondaryReadingItems.map(({ book, progress }) => (
+                        <Link
+                          key={book.id}
+                          to={`/leer/${book.id}`}
+                          className="inline-flex items-center gap-1.5 max-w-[210px] rounded-full bg-paper px-2.5 py-1 text-[11px] font-medium text-navy border border-line hover:border-navy/25 hover:bg-paper-warm transition-colors"
+                        >
+                          <span className="truncate">{book.title}</span>
+                          <span className="text-gold-dark font-semibold tabular-nums shrink-0">
+                            {Math.round(progress.progress_percent)}%
+                          </span>
+                        </Link>
+                      ))}
+                      <Link
+                        to="/mi-biblioteca"
+                        className="text-[11px] font-semibold text-forest hover:underline underline-offset-2 ml-0.5"
+                      >
+                        Mi biblioteca →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Custom Micole Mascot harmoniously integrated */}
+              <div className="hidden md:flex items-end justify-end self-end -mb-6 pr-1 shrink-0">
+                <LexMascot
+                  isAuthenticated={isAuthenticated}
+                  sessionKey={userId}
+                  userName={firstName}
+                  sizeClassName="h-[188px] lg:h-[214px] xl:h-[228px]"
+                />
+              </div>
+            </div>
+          </m.div>
+        )}
+      </m.section>
+
+      {/* Recommended Books — Seamless 5–6 column editorial shelf */}
+      <DiscoverBookCarousel
+        title="Recomendados para ti"
+        subtitle="Obras jurídicas seleccionadas listas para lectura inmediata."
+        seeAllTo="/explorar?orden=popular"
+        books={heroRecommendations}
+        isInLibrary={isInLibrary}
+        isFavorite={isFavorite}
+        getProgress={getProgress}
+        onToggleLibrary={handleToggleLibrary}
+        onToggleFavorite={handleToggleFavorite}
+        onPreview={setPreviewBook}
+      />
+
+      {/* Compact Editorial Categories Ribbon */}
+      {categoryShowcases.length > 0 && (
+        <m.section
+          variants={SCROLL_REVEAL_VARIANTS}
+          initial="hidden"
+          whileInView="visible"
+          viewport={VIEWPORT_ONCE}
+          className="space-y-3.5"
+        >
+          <div className="flex items-end justify-between gap-4 border-b border-line/70 pb-2.5">
+            <div>
+              <h2 className="font-editorial text-lg sm:text-[21px] font-semibold text-navy tracking-tight">
+                Categorías jurídicas
+              </h2>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Explora por área del Derecho y colecciones normativas.
+              </p>
+            </div>
+            <Link
+              to="/categorias"
+              className="inline-flex items-center gap-0.5 text-xs font-semibold text-navy/85 hover:text-gold-dark transition-colors shrink-0"
+            >
+              <span>Ver todas</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+            {categoryShowcases.map(({ category, count, coverBook }) => (
+              <Link
+                key={category.id}
+                to={`/explorar?categoria=${encodeURIComponent(category.name)}`}
+                className="group shrink-0 w-[196px] sm:w-[216px] flex items-center gap-3 rounded-2xl bg-white border border-line/85 hover:border-navy/25 hover:shadow-subtle p-2.5 transition-all"
+              >
+                <div className="w-10 shrink-0">
+                  {coverBook ? (
+                    <BookCover
+                      book={coverBook}
+                      size="sm"
+                      className="rounded-[4px] shadow-sm"
+                    />
+                  ) : (
+                    <div className="aspect-[2/3] w-full rounded-[4px] bg-navy text-gold flex items-center justify-center">
+                      <Scale className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-navy group-hover:text-forest transition-colors line-clamp-2 leading-snug">
                     {category.name}
                   </p>
                   <p className="text-[11px] text-ink-subtle mt-0.5 tabular-nums">
                     {count === 1 ? '1 recurso' : `${count} recursos`}
                   </p>
-                </Link>
-              ))}
-            </div>
-          </m.section>
-        )}
-
-        {/* Continue Reading */}
-        {continueReading.length > 0 && (
-          <m.section
-            variants={SCROLL_REVEAL_VARIANTS}
-            initial="hidden"
-            whileInView="visible"
-            viewport={VIEWPORT_ONCE}
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-navy tracking-tight">
-                  Continuar leyendo
-                </h2>
-                <p className="text-xs sm:text-sm text-ink-muted mt-0.5">
-                  Retoma exactamente en la página donde dejaste tu estudio.
-                </p>
-              </div>
-              <Link
-                to="/mi-biblioteca"
-                className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-semibold text-navy hover:border-navy/25 hover:bg-sand-soft transition-all"
-              >
-                Ver todos <ArrowRight className="h-3.5 w-3.5 text-ink-muted" />
+                </div>
               </Link>
-            </div>
+            ))}
+          </div>
+        </m.section>
+      )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {continueReading.slice(0, 3).map(({ book, progress }) => (
-                <Link
-                  key={book.id}
-                  to={`/leer/${book.id}`}
-                  className="group flex items-center gap-4 p-3.5 rounded-2xl border border-line bg-white hover:border-sand-deep hover:bg-sand-soft/50 transition-all"
-                >
-                  <div className="w-16 shrink-0">
-                    <BookCover book={book} size="sm" progressPercent={progress.progress_percent} />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <p className="text-sm font-semibold text-navy line-clamp-2 group-hover:text-navy-secondary">
-                      {book.title}
-                    </p>
-                    <p className="text-xs text-ink-muted truncate">{book.author}</p>
-                    <div className="space-y-1 pt-0.5">
-                      <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                        <span>
-                          Página {progress.current_page}
-                          {progress.total_pages ? ` de ${progress.total_pages}` : ''}
-                        </span>
-                        <span className="font-semibold text-navy">
-                          {Math.round(progress.progress_percent)}%
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-surface-tertiary overflow-hidden">
-                        <div
-                          className="h-full bg-gold rounded-full"
-                          style={{ width: `${Math.min(100, Math.max(4, progress.progress_percent))}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <BookOpen className="h-4 w-4 text-ink-subtle group-hover:text-navy shrink-0" />
-                </Link>
-              ))}
-            </div>
-          </m.section>
-        )}
-
-        {/* Recently Consulted — 3-book center-focus carousel */}
-        {recentlyConsulted.length > 0 && (
-          <RecentFocusCarousel
-            title="Consultados recientemente"
-            subtitle="Tus últimos documentos abiertos para retomar de inmediato."
-            seeAllTo="/recientes"
-            books={recentlyConsulted}
-            isInLibrary={isInLibrary}
-            isFavorite={isFavorite}
-            getProgress={getProgress}
-            onToggleLibrary={handleToggleLibrary}
-            onToggleFavorite={handleToggleFavorite}
-            onPreview={setPreviewBook}
-          />
-        )}
-
-        {/* Recently Added */}
+      {/* Dominican Legislation Shelf */}
+      {legislationBooks.length > 0 && (
         <BookShelf
-          title="Recursos recientemente agregados"
-          seeAllTo="/explorar?orden=recent"
-          books={recentBooks}
+          title="Legislación dominicana"
+          subtitle="Códigos, leyes orgánicas y normativa procesal vigente."
+          seeAllTo="/explorar?categoria=Legislaci%C3%B3n%20dominicana"
+          books={legislationBooks}
           isInLibrary={isInLibrary}
           isFavorite={isFavorite}
           getProgress={getProgress}
@@ -522,12 +493,15 @@ export function HomePage() {
           onToggleFavorite={handleToggleFavorite}
           onPreview={setPreviewBook}
         />
+      )}
 
-        {/* Most Consulted */}
-        <BookShelf
-          title="Libros más consultados"
-          seeAllTo="/explorar?orden=popular"
-          books={mostConsulted}
+      {/* Subdued 3D Focus Carousel — Recently Consulted (lower protagonism) */}
+      {recentlyConsulted.length > 0 && (
+        <RecentFocusCarousel
+          title="Consultados recientemente"
+          subtitle="Tus últimos documentos abiertos en vitrina rápida."
+          seeAllTo="/recientes"
+          books={recentlyConsulted}
           isInLibrary={isInLibrary}
           isFavorite={isFavorite}
           getProgress={getProgress}
@@ -535,39 +509,49 @@ export function HomePage() {
           onToggleFavorite={handleToggleFavorite}
           onPreview={setPreviewBook}
         />
+      )}
 
-        {/* Dominican Legislation */}
-        {legislationBooks.length > 0 && (
-          <BookShelf
-            title="Legislación dominicana"
-            subtitle="Códigos, leyes orgánicas y normativa procesal vigente."
-            seeAllTo="/explorar?categoria=Legislaci%C3%B3n%20Dominicana"
-            books={legislationBooks}
-            isInLibrary={isInLibrary}
-            isFavorite={isFavorite}
-            getProgress={getProgress}
-            onToggleLibrary={handleToggleLibrary}
-            onToggleFavorite={handleToggleFavorite}
-            onPreview={setPreviewBook}
-          />
-        )}
+      {/* Recently Added */}
+      <BookShelf
+        title="Incorporaciones recientes"
+        seeAllTo="/explorar?orden=recent"
+        books={recentBooks}
+        isInLibrary={isInLibrary}
+        isFavorite={isFavorite}
+        getProgress={getProgress}
+        onToggleLibrary={handleToggleLibrary}
+        onToggleFavorite={handleToggleFavorite}
+        onPreview={setPreviewBook}
+      />
 
-        {/* Featured Jurisprudence */}
-        {jurisprudenceBooks.length > 0 && (
-          <BookShelf
-            title="Jurisprudencia destacada"
-            subtitle="Criterios relevantes en materia procesal penal y constitucional."
-            seeAllTo="/explorar?categoria=Jurisprudencia"
-            books={jurisprudenceBooks}
-            isInLibrary={isInLibrary}
-            isFavorite={isFavorite}
-            getProgress={getProgress}
-            onToggleLibrary={handleToggleLibrary}
-            onToggleFavorite={handleToggleFavorite}
-            onPreview={setPreviewBook}
-          />
-        )}
-      </div>
+      {/* Most Consulted */}
+      <BookShelf
+        title="Más consultados"
+        seeAllTo="/explorar?orden=popular"
+        books={mostConsulted}
+        isInLibrary={isInLibrary}
+        isFavorite={isFavorite}
+        getProgress={getProgress}
+        onToggleLibrary={handleToggleLibrary}
+        onToggleFavorite={handleToggleFavorite}
+        onPreview={setPreviewBook}
+      />
+
+      {/* Featured Jurisprudence */}
+      {jurisprudenceBooks.length > 0 && (
+        <BookShelf
+          title="Jurisprudencia destacada"
+          subtitle="Criterios relevantes en materia procesal penal y constitucional."
+          seeAllTo="/explorar?categoria=Jurisprudencia"
+          books={jurisprudenceBooks}
+          isInLibrary={isInLibrary}
+          isFavorite={isFavorite}
+          getProgress={getProgress}
+          onToggleLibrary={handleToggleLibrary}
+          onToggleFavorite={handleToggleFavorite}
+          onPreview={setPreviewBook}
+        />
+      )}
 
       <QuickPreviewModal
         book={previewBook}

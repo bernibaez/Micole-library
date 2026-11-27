@@ -57,6 +57,7 @@ export function PdfReaderPage() {
     saveProgress,
     logHistory,
     handleToggleBookmark,
+    handleSaveBookmarkNote,
     handleDownloadBook,
   } = usePersonalLibrary();
   const { preferences, updatePreferences } = usePreferencesQuery();
@@ -598,14 +599,16 @@ export function PdfReaderPage() {
   }
 
   const progressPercent = numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
+  const remainingPages = numPages > 0 ? Math.max(0, numPages - currentPage) : 0;
+  const estimatedMinutesLeft = remainingPages > 0 ? Math.max(1, Math.round(remainingPages * 1.4)) : 0;
   const showToolbar = !focusMode && (!isMobile || mobileChromeVisible);
 
   const canvasBg =
     theme === 'dark'
-      ? 'bg-[#0B101A] text-slate-100'
+      ? 'bg-[#121D32] text-slate-100'
       : theme === 'sepia'
-        ? 'bg-[#EBE1CE] text-[#3B3124]'
-        : 'bg-[#EEF1F6] text-ink';
+        ? 'bg-[#EDE4D3] text-[#3B3124]'
+        : 'bg-paper text-ink';
 
   return (
     <div
@@ -615,22 +618,13 @@ export function PdfReaderPage() {
         canvasBg
       )}
     >
-      {/* Top Toolbar */}
+      {/* Minimal Editorial Top Toolbar */}
       {showToolbar && (
         <ReaderToolbar
           bookId={book.id}
           bookTitle={book.title}
           currentPage={currentPage}
           numPages={numPages}
-          pageInput={pageInput}
-          onPageInputChange={setPageInput}
-          onPageInputCommit={() => {
-            const parsed = Number.parseInt(pageInput, 10);
-            if (!Number.isNaN(parsed)) goToPage(parsed);
-            else setPageInput(String(currentPage));
-          }}
-          onPrevPage={() => goToPage(currentPage - 1)}
-          onNextPage={() => goToPage(currentPage + 1)}
           zoom={zoom}
           fitMode={fitMode}
           onZoomIn={() => {
@@ -640,6 +634,10 @@ export function PdfReaderPage() {
           onZoomOut={() => {
             setFitMode('custom');
             setZoom((z) => Math.max(0.6, Number((z - 0.15).toFixed(2))));
+          }}
+          onZoomChange={(val) => {
+            setFitMode('custom');
+            setZoom(Math.min(2.4, Math.max(0.6, Number(val.toFixed(2)))));
           }}
           onSetFitMode={handleSetFitMode}
           onRotate={() => setRotation((r) => (r + 90) % 360)}
@@ -664,9 +662,9 @@ export function PdfReaderPage() {
         />
       )}
 
-      {/* Subtle Progress Bar */}
+      {/* Hairline Reading Progress Track */}
       <div
-        className="h-1 w-full bg-black/10 shrink-0"
+        className="h-[2.5px] w-full bg-current/10 shrink-0"
         role="progressbar"
         aria-valuenow={progressPercent}
         aria-valuemin={0}
@@ -693,7 +691,7 @@ export function PdfReaderPage() {
         }
         className="flex-1 flex min-h-0 overflow-hidden relative"
       >
-        {/* Sidebar: Thumbnails, Outline, Bookmarks, In-PDF Search */}
+        {/* Sidebar: Outline, Thumbnails, Bookmarks & Notes, In-PDF Search */}
         {!focusMode && (
           <ReaderSidebar
             open={sidebarOpen}
@@ -709,6 +707,9 @@ export function PdfReaderPage() {
             outline={outline}
             bookmarks={bookmarks}
             onRemoveBookmark={(pageNum) => void handleToggleBookmark(book.id, pageNum)}
+            onSaveBookmarkNote={(pageNum, label, note) =>
+              handleSaveBookmarkNote(book.id, pageNum, label, note)
+            }
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             searchResults={searchResults}
@@ -724,13 +725,12 @@ export function PdfReaderPage() {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onClick={(e) => {
-            // In mobile reading, tap empty canvas margin to toggle controls cleanly
             if (isMobile && e.target === canvasHostRef.current) {
               setMobileChromeVisible((v) => !v);
             }
           }}
           className={cn(
-            'flex-1 overflow-auto px-2 sm:px-7 pt-3 sm:pt-7 pb-36 md:pb-8 overscroll-contain touch-pan-x touch-pan-y',
+            'flex-1 overflow-auto px-2 sm:px-8 pt-4 sm:pt-7 pb-36 md:pb-24 overscroll-contain touch-pan-x touch-pan-y',
             theme === 'sepia' && 'lex-pdf-sepia',
             theme === 'dark' && 'lex-pdf-dark-page'
           )}
@@ -748,7 +748,7 @@ export function PdfReaderPage() {
               </div>
             </div>
           ) : (
-            <div className="mx-auto w-fit rounded-lg overflow-hidden shadow-cover bg-white">
+            <div className="mx-auto w-fit rounded-lg overflow-hidden shadow-editorial-cover bg-white ring-1 ring-black/[0.06]">
               <Page
                 pageNumber={currentPage}
                 width={pageWidth}
@@ -760,34 +760,90 @@ export function PdfReaderPage() {
               />
             </div>
           )}
-
-          {/* Bottom quick pager inside scroll canvas (desktop & tablet) */}
-          {numPages > 1 && (
-            <div className="mt-5 mx-auto w-fit flex items-center gap-3 text-xs">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={currentPage <= 1}
-                onClick={() => goToPage(currentPage - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Anterior
-              </Button>
-              <span className="font-medium tabular-nums opacity-80">
-                Página {currentPage} de {numPages} ({progressPercent}%)
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={currentPage >= numPages}
-                onClick={() => goToPage(currentPage + 1)}
-              >
-                Siguiente
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
         </div>
+
+        {/* Floating Apple Books Scrubber Pill (Desktop & Tablet) */}
+        {!isMobile && !focusMode && numPages > 0 && (
+          <div
+            className={cn(
+              'fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-full border px-3.5 py-2 backdrop-blur-md shadow-popover transition-colors',
+              theme === 'dark'
+                ? 'bg-[#182640]/92 border-white/12 text-slate-100'
+                : theme === 'sepia'
+                  ? 'bg-[#F5EEE2]/92 border-[#DFD4BF] text-[#3B3124]'
+                  : 'bg-white/92 border-line text-navy'
+            )}
+          >
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => goToPage(currentPage - 1)}
+              aria-label="Página anterior"
+              className="h-7 w-7 rounded-full inline-flex items-center justify-center hover:bg-current/10 disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            <div className="flex flex-col items-center gap-1 min-w-[240px] sm:min-w-[300px]">
+              {numPages > 1 && (
+                <input
+                  type="range"
+                  min={1}
+                  max={numPages}
+                  value={currentPage}
+                  onChange={(e) => goToPage(Number(e.target.value))}
+                  aria-label="Deslizar para navegar por páginas"
+                  className="w-full h-1 accent-gold cursor-pointer"
+                />
+              )}
+              <div className="flex items-center gap-2 text-[11px] font-medium tabular-nums opacity-85">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const parsed = Number.parseInt(pageInput, 10);
+                    if (!Number.isNaN(parsed)) goToPage(parsed);
+                    else setPageInput(String(currentPage));
+                  }}
+                  className="inline-flex items-center gap-1"
+                >
+                  <span>Pág.</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value.replace(/[^\d]/g, ''))}
+                    onBlur={() => {
+                      const parsed = Number.parseInt(pageInput, 10);
+                      if (!Number.isNaN(parsed)) goToPage(parsed);
+                      else setPageInput(String(currentPage));
+                    }}
+                    aria-label="Número de página actual"
+                    className="w-9 rounded bg-current/10 px-1 py-0.5 text-center text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-gold"
+                  />
+                  <span>de {numPages}</span>
+                </form>
+                <span aria-hidden="true">·</span>
+                <span className="font-semibold">{progressPercent}%</span>
+                {estimatedMinutesLeft > 0 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="opacity-75">~{estimatedMinutesLeft} min</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={currentPage >= numPages}
+              onClick={() => goToPage(currentPage + 1)}
+              aria-label="Página siguiente"
+              className="h-7 w-7 rounded-full inline-flex items-center justify-center hover:bg-current/10 disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Floating Focus Mode Controls */}
         {focusMode && (
@@ -831,10 +887,10 @@ export function PdfReaderPage() {
             className={cn(
               'fixed bottom-0 inset-x-0 z-30 border-t px-3 pt-2 pb-2.5 backdrop-blur-md space-y-2 safe-bottom shadow-popover',
               theme === 'dark'
-                ? 'bg-[#121926]/95 border-white/10 text-slate-100'
+                ? 'bg-[#121D32]/95 border-white/10 text-slate-100'
                 : theme === 'sepia'
-                  ? 'bg-[#F3ECE0]/95 border-[#DFD4BF] text-[#3B3124]'
-                  : 'bg-white/95 border-line text-navy'
+                  ? 'bg-[#F2EAE0]/95 border-[#DFD4BF] text-[#3B3124]'
+                  : 'bg-paper/95 border-line text-navy'
             )}
           >
             {/* Thumb-zone page navigation + quick scrubber slider */}
@@ -932,7 +988,7 @@ export function PdfReaderPage() {
                   ) : (
                     <Sun className="h-3.5 w-3.5" />
                   )}
-                  {theme === 'light' ? 'Claro' : theme === 'sepia' ? 'Sepia' : 'Oscuro'}
+                  {theme === 'light' ? 'Papel' : theme === 'sepia' ? 'Sepia' : 'Noche'}
                 </button>
                 <button
                   type="button"

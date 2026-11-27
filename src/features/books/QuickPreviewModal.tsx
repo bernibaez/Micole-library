@@ -91,10 +91,10 @@ export function QuickPreviewModal({
   const content = book && availability ? (
     <div className="grid grid-cols-1 md:grid-cols-[270px_minmax(0,1fr)] min-h-[420px]">
       {/* Summary column */}
-      <div className="p-5 sm:p-6 bg-surface-secondary/60 border-b md:border-b-0 md:border-r border-line flex flex-col justify-between gap-5">
+      <div className="p-5 sm:p-6 bg-paper border-b md:border-b-0 md:border-r border-line flex flex-col justify-between gap-5">
         <div className="space-y-4">
           <div className="flex md:flex-col gap-4 items-start">
-            <div className="w-24 md:w-36 shrink-0 md:mx-auto">
+            <div className="w-24 md:w-32 shrink-0 md:mx-auto">
               <BookCover book={book} />
             </div>
             <div className="min-w-0 space-y-1.5 md:text-center md:w-full">
@@ -130,7 +130,7 @@ export function QuickPreviewModal({
                 <span
                   className={
                     availability.status === 'available'
-                      ? 'h-2 w-2 rounded-full bg-emerald-500 shrink-0'
+                      ? 'h-2 w-2 rounded-full bg-forest shrink-0'
                       : availability.status === 'login_required'
                         ? 'h-2 w-2 rounded-full bg-amber-500 shrink-0'
                         : 'h-2 w-2 rounded-full bg-ink-subtle shrink-0'
@@ -153,8 +153,8 @@ export function QuickPreviewModal({
         <div className="space-y-2">
           {availability.canRead && (
             <Link to={`/leer/${book.id}`} onClick={onClose} className="block">
-              <Button variant="primary" className="w-full">
-                <BookOpen className="h-4 w-4" />
+              <Button variant="primary" className="w-full rounded-full">
+                <BookOpen className="h-4 w-4 text-gold" />
                 Leer documento completo
               </Button>
             </Link>
@@ -164,6 +164,7 @@ export function QuickPreviewModal({
               <DownloadActionButton
                 variant="secondary"
                 size="sm"
+                className="rounded-full"
                 idleLabel="Descargar"
                 successLabel="Listo"
                 onDownload={() => onDownload(book)}
@@ -174,8 +175,8 @@ export function QuickPreviewModal({
               onClick={onClose}
               className={!onDownload || !availability.canDownload ? 'col-span-2 block' : 'block'}
             >
-              <Button variant="secondary" size="sm" className="w-full">
-                Ver ficha detallada
+              <Button variant="secondary" size="sm" className="w-full rounded-full">
+                Ver ficha
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </Link>
@@ -185,7 +186,7 @@ export function QuickPreviewModal({
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1 border border-line"
+                className="flex-1 rounded-full border border-line bg-white"
                 onClick={() => onToggleLibrary(book.id)}
               >
                 <Bookmark className="h-3.5 w-3.5" fill={inLibrary ? 'currentColor' : 'none'} />
@@ -196,7 +197,7 @@ export function QuickPreviewModal({
               <Button
                 variant="ghost"
                 size="icon"
-                className="border border-line h-9 w-9"
+                className="rounded-full border border-line bg-white h-9 w-9"
                 aria-label={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
                 onClick={() => onToggleFavorite(book.id)}
               >
@@ -212,7 +213,7 @@ export function QuickPreviewModal({
       </div>
 
       {/* PDF First-Pages Preview column */}
-      <div className="flex flex-col bg-surface-secondary/30 min-h-[360px]">
+      <div className="flex flex-col bg-paper-warm/50 min-h-[360px]">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-line bg-white">
           <div className="text-xs font-medium text-ink-muted">
             Vista previa rápida · Página {previewPage} de {maxAllowed}

@@ -101,7 +101,7 @@ export function DiscoverSearchBar({ categories, className }: DiscoverSearchBarPr
       <form
         onSubmit={handleSubmit}
         role="search"
-        className="flex items-center bg-white rounded-2xl shadow-pill border border-line/90 p-1.5 gap-1.5 transition-shadow focus-within:ring-2 focus-within:ring-navy/10"
+        className="flex items-center bg-white rounded-full shadow-subtle border border-line p-1.5 gap-1 transition-all focus-within:border-navy/35 focus-within:ring-2 focus-within:ring-navy/10"
       >
         {/* Category Selector Dropdown */}
         <div className="relative shrink-0 hidden sm:block">
@@ -112,7 +112,7 @@ export function DiscoverSearchBar({ categories, className }: DiscoverSearchBarPr
               setSearchOpen(false);
             }}
             aria-expanded={catOpen}
-            className="h-10 px-3.5 rounded-xl inline-flex items-center gap-2 text-xs font-medium text-ink hover:text-navy hover:bg-sand-soft transition-colors max-w-[175px]"
+            className="h-9 px-3.5 rounded-full inline-flex items-center gap-1.5 text-xs font-medium text-ink hover:text-navy hover:bg-paper-warm transition-colors max-w-[162px]"
           >
             <span className="truncate">{selectedCategory || 'Todas las categorías'}</span>
             <ChevronDown
@@ -215,7 +215,7 @@ export function DiscoverSearchBar({ categories, className }: DiscoverSearchBarPr
         {/* Submit Button */}
         <button
           type="submit"
-          className="h-10 px-5 sm:px-6 rounded-xl bg-navy text-white text-xs sm:text-sm font-semibold hover:bg-navy-secondary active:scale-[0.98] transition-all shrink-0 shadow-sm"
+          className="h-9 px-4 sm:px-5 rounded-full bg-navy text-white text-xs sm:text-[13px] font-semibold hover:bg-navy-secondary active:scale-[0.98] transition-all shrink-0"
         >
           Buscar
         </button>

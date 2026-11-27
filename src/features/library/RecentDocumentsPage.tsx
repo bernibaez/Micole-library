@@ -76,11 +76,12 @@ export function RecentDocumentsPage() {
 
         {recentlyViewed.length === 0 ? (
           <EmptyState
+            mascot="not-found"
             title="Aún no has consultado documentos"
             description="Cuando abras la ficha o el lector de un documento, aparecerá aquí para retomarlo rápidamente."
             action={
               <Link to="/explorar">
-                <Button variant="primary">
+                <Button variant="primary" className="rounded-full">
                   <Compass className="h-4 w-4" />
                   Explorar catálogo
                 </Button>

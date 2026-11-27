@@ -669,6 +669,72 @@ export async function togglePageBookmark(
   return true;
 }
 
+export async function upsertPageBookmarkNote(
+  userId: string,
+  documentId: string,
+  pageNumber: number,
+  label: string,
+  note: string
+): Promise<void> {
+  const cleanLabel = label.trim() || `Página ${pageNumber}`;
+  const cleanNote = note.trim() || null;
+
+  if (!isSupabaseConfigured || !supabase || userId === 'demo-user') {
+    const snap = readLocalSnapshot(userId);
+    const exists = snap.bookmarks.some(
+      (b) => b.book_id === documentId && b.page_number === pageNumber
+    );
+    if (exists) {
+      snap.bookmarks = snap.bookmarks.map((b) =>
+        b.book_id === documentId && b.page_number === pageNumber
+          ? { ...b, label: cleanLabel, note: cleanNote }
+          : b
+      );
+    } else {
+      snap.bookmarks = [
+        ...snap.bookmarks,
+        {
+          id: `local-bm-${documentId}-${pageNumber}`,
+          user_id: userId,
+          book_id: documentId,
+          page_number: pageNumber,
+          label: cleanLabel,
+          note: cleanNote,
+          created_at: new Date().toISOString(),
+        },
+      ].sort((a, b) => a.page_number - b.page_number);
+    }
+    writeLocalSnapshot(userId, snap);
+    return;
+  }
+
+  const { data: existing } = await supabase
+    .from('bookmarks')
+    .select('id')
+    .eq('user_id', userId)
+    .or(`document_id.eq.${documentId},book_id.eq.${documentId}`)
+    .eq('page_number', pageNumber)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('bookmarks')
+      .update({ label: cleanLabel, note: cleanNote })
+      .eq('id', existing.id);
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase.from('bookmarks').insert({
+    user_id: userId,
+    document_id: documentId,
+    page_number: pageNumber,
+    label: cleanLabel,
+    note: cleanNote,
+  });
+  if (error) throw error;
+}
+
 export async function createCollection(
   userId: string,
   payload: { name: string; description?: string; color?: string }

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, m, type PanInfo } from 'motion/react';
 import {
   Bookmark,
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -19,7 +18,7 @@ import { getDocumentTypeLabel } from '../../utils/format';
 import { cn } from '../../utils/cn';
 import { EASE_EDITORIAL } from '../../utils/motion';
 
-const AUTOPLAY_INTERVAL_MS = 4800;
+const AUTOPLAY_INTERVAL_MS = 5400;
 
 interface DiscoverBookCarouselProps {
   title?: string;
@@ -35,7 +34,7 @@ interface DiscoverBookCarouselProps {
 }
 
 export function DiscoverBookCarousel({
-  title = 'Libros recomendados',
+  title = 'Recomendados para ti',
   subtitle,
   seeAllTo = '/explorar?orden=popular',
   books,
@@ -47,10 +46,12 @@ export function DiscoverBookCarousel({
   onPreview,
 }: DiscoverBookCarouselProps) {
   const reducedMotion = useReducedMotion();
+  const isWide = useMediaQuery('(min-width: 1280px)');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const isTablet = useMediaQuery('(min-width: 640px)');
 
-  const visibleCount = isDesktop ? 4 : isTablet ? 3 : 2;
+  // 5–6 compact cards on desktop (~22–25% smaller than previous 4-column grid)
+  const visibleCount = isWide ? 6 : isDesktop ? 5 : isTablet ? 4 : 2;
   const total = books.length;
   const canSlide = total > visibleCount;
 
@@ -81,7 +82,6 @@ export function DiscoverBookCarousel({
     [canSlide, safeActiveIndex, total]
   );
 
-  // Smooth auto-play timer (pauses on hover, manual pause, or reduced motion)
   const isAutoPlaying = canSlide && !paused && !hovered && !reducedMotion;
 
   useEffect(() => {
@@ -106,9 +106,9 @@ export function DiscoverBookCarousel({
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (!canSlide) return;
-    if (info.offset.x < -55 || info.velocity.x < -320) {
+    if (info.offset.x < -50 || info.velocity.x < -300) {
       stepBy(1);
-    } else if (info.offset.x > 55 || info.velocity.x > 320) {
+    } else if (info.offset.x > 50 || info.velocity.x > 300) {
       stepBy(-1);
     }
   };
@@ -126,12 +126,9 @@ export function DiscoverBookCarousel({
 
   if (total === 0) return null;
 
-  const formattedIndex = String(safeActiveIndex + 1).padStart(2, '0');
-  const formattedTotal = String(total).padStart(2, '0');
-
   return (
-    <div
-      className="mt-3 sm:mt-4 rounded-3xl bg-gradient-to-b from-sand-soft/65 via-sand-soft/25 to-white border border-line/80 px-4 sm:px-6 lg:px-7 py-5 sm:py-6 shadow-subtle outline-none"
+    <section
+      className="space-y-3.5 outline-none"
       tabIndex={0}
       role="region"
       aria-roledescription="carrusel"
@@ -142,41 +139,32 @@ export function DiscoverBookCarousel({
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
     >
-      {/* Header Row with Dynamic Counter & Controls */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-5 sm:mb-6">
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-3">
-            <h2 className="font-editorial text-xl sm:text-2xl font-semibold text-navy tracking-tight">
-              {title}
-            </h2>
-            {canSlide && (
-              <span className="inline-flex items-center rounded-full bg-white border border-line/90 px-2.5 py-0.5 text-[11px] font-semibold text-navy/80 tabular-nums shadow-xs">
-                {formattedIndex}
-                <span className="mx-1 text-ink-subtle">/</span>
-                <span className="text-ink-muted">{formattedTotal}</span>
-              </span>
-            )}
-          </div>
+      {/* Editorial Shelf Header (seamless on #F7F6F2, no heavy box) */}
+      <div className="flex items-end justify-between gap-3 border-b border-line/70 pb-2.5">
+        <div className="min-w-0">
+          <h2 className="font-editorial text-lg sm:text-[21px] font-semibold text-navy tracking-tight">
+            {title}
+          </h2>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-ink-muted">{subtitle}</p>
+            <p className="text-xs text-ink-muted mt-0.5 line-clamp-1">{subtitle}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {canSlide && (
-            <div className="flex items-center gap-1.5 mr-1">
+            <div className="flex items-center gap-1">
               {!reducedMotion && (
                 <button
                   type="button"
                   onClick={() => setPaused((v) => !v)}
-                  aria-label={paused ? 'Reanudar carrusel automático' : 'Pausar carrusel automático'}
+                  aria-label={paused ? 'Reanudar rotación' : 'Pausar rotación'}
                   title={paused ? 'Reanudar' : 'Pausar'}
-                  className="h-8 w-8 rounded-full border border-line bg-white text-ink-muted hover:text-navy hover:border-navy/25 hover:bg-sand-soft inline-flex items-center justify-center transition-all shadow-subtle"
+                  className="h-7 w-7 rounded-full border border-line bg-white/85 text-ink-muted hover:text-navy hover:border-line-strong inline-flex items-center justify-center transition-colors"
                 >
                   {paused ? (
-                    <Play className="h-3.5 w-3.5 translate-x-[0.5px]" />
+                    <Play className="h-3 w-3 translate-x-[0.5px]" />
                   ) : (
-                    <Pause className="h-3.5 w-3.5" />
+                    <Pause className="h-3 w-3" />
                   )}
                 </button>
               )}
@@ -184,17 +172,17 @@ export function DiscoverBookCarousel({
                 type="button"
                 onClick={() => stepBy(-1)}
                 aria-label="Libro anterior"
-                className="h-8 w-8 rounded-full border border-line bg-white text-navy hover:border-navy/30 hover:bg-sand-soft active:scale-95 inline-flex items-center justify-center transition-all shadow-subtle"
+                className="h-7 w-7 rounded-full border border-line bg-white/85 text-navy hover:border-line-strong hover:bg-white active:scale-95 inline-flex items-center justify-center transition-all"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => stepBy(1)}
                 aria-label="Siguiente libro"
-                className="h-8 w-8 rounded-full border border-line bg-white text-navy hover:border-navy/30 hover:bg-sand-soft active:scale-95 inline-flex items-center justify-center transition-all shadow-subtle"
+                className="h-7 w-7 rounded-full border border-line bg-white/85 text-navy hover:border-line-strong hover:bg-white active:scale-95 inline-flex items-center justify-center transition-all"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
@@ -202,29 +190,29 @@ export function DiscoverBookCarousel({
           {seeAllTo && (
             <Link
               to={seeAllTo}
-              className="inline-flex items-center gap-1 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-navy shadow-subtle border border-line hover:border-navy/25 hover:bg-sand-soft transition-all"
+              className="inline-flex items-center gap-0.5 text-xs font-semibold text-navy/85 hover:text-gold-dark transition-colors pl-1"
             >
-              Ver todos
-              <ChevronRight className="h-3.5 w-3.5 text-ink-muted" />
+              <span>Ver todos</span>
+              <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           )}
         </div>
       </div>
 
-      {/* Interactive Draggable 3D Carousel Stage */}
+      {/* Interactive Draggable 5–6 Column Editorial Stage */}
       <m.div
         drag={canSlide && !reducedMotion ? 'x' : false}
         dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.14}
+        dragElastic={0.12}
         onDragEnd={handleDragEnd}
         className={cn(
-          'relative overflow-hidden py-3 -my-3 px-1.5 -mx-1.5',
+          'relative overflow-hidden py-2 -my-1 px-1 -mx-1',
           canSlide && !reducedMotion && 'cursor-grab active:cursor-grabbing'
         )}
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
           <AnimatePresence initial={false} mode="popLayout" custom={direction}>
-            {visibleBooks.map(({ book }, slotIndex) => {
+            {visibleBooks.map(({ book }) => {
               const inLib = isInLibrary(book.id);
               const fav = isFavorite(book.id);
               const prog = getProgress(book.id);
@@ -237,39 +225,25 @@ export function DiscoverBookCarousel({
                   initial={
                     reducedMotion
                       ? false
-                      : {
-                          opacity: 0,
-                          x: direction > 0 ? 52 : -52,
-                          scale: 0.94,
-                        }
+                      : { opacity: 0, x: direction > 0 ? 40 : -40, scale: 0.96 }
                   }
-                  animate={{
-                    opacity: 1,
-                    x: 0,
-                    scale: 1,
-                  }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={
                     reducedMotion
                       ? { opacity: 0 }
-                      : {
-                          opacity: 0,
-                          x: direction > 0 ? -44 : 44,
-                          scale: 0.92,
-                        }
+                      : { opacity: 0, x: direction > 0 ? -36 : 36, scale: 0.95 }
                   }
                   transition={
                     reducedMotion
                       ? { duration: 0 }
                       : {
-                          layout: { type: 'spring', stiffness: 320, damping: 30 },
-                          opacity: { duration: 0.28, ease: EASE_EDITORIAL },
+                          layout: { type: 'spring', stiffness: 320, damping: 32 },
+                          opacity: { duration: 0.24, ease: EASE_EDITORIAL },
                           x: { type: 'spring', stiffness: 300, damping: 28 },
-                          scale: { duration: 0.3, ease: EASE_EDITORIAL },
                         }
                   }
                   className="group flex flex-col min-w-0 will-change-transform select-none"
                 >
-                  {/* 3D Hardcover Book Container + Grounded Contact Shadow */}
                   <div className="relative">
                     <Link
                       to={`/libro/${book.id}`}
@@ -283,103 +257,70 @@ export function DiscoverBookCarousel({
                       />
                     </Link>
 
-                    {/* Soft grounded shadow beneath the physical book */}
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none mx-3 mt-1 h-2.5 rounded-full bg-navy/12 blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-x-95"
+                      className="pointer-events-none mx-2.5 mt-1 h-1.5 rounded-full bg-navy/12 blur-[6px] opacity-65 transition-all duration-300 group-hover:opacity-95 group-hover:scale-x-95"
                     />
 
-                    {/* Subtle Floating Quick Actions on Hover */}
-                    <div className="pointer-events-none absolute inset-x-2.5 bottom-6 flex items-center justify-between gap-1.5 opacity-0 translate-y-1.5 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all duration-200 ease-out z-30">
-                      <div className="pointer-events-auto flex items-center gap-1">
-                        {(book.file_url || book.drive_file_id) && book.allow_preview !== false && (
-                          <Link
-                            to={`/leer/${book.id}`}
-                            draggable={false}
-                            aria-label={`Leer ${book.title}`}
-                            className="h-8 px-2.5 rounded-lg bg-navy text-white text-[11px] font-semibold shadow-sm hover:bg-navy-secondary inline-flex items-center gap-1 transition-colors"
-                          >
-                            <BookOpen className="h-3.5 w-3.5 text-gold" />
-                            <span>Leer</span>
-                          </Link>
-                        )}
-                        <m.button
-                          type="button"
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => onPreview(book)}
-                          aria-label={`Vista previa de ${book.title}`}
-                          title="Vista previa"
-                          className="h-8 w-8 sm:w-auto sm:px-2.5 rounded-lg bg-white/95 backdrop-blur-sm text-navy text-[11px] font-semibold shadow-sm hover:bg-white inline-flex items-center justify-center gap-1 transition-colors"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span className="hidden xl:inline">Previa</span>
-                        </m.button>
-                      </div>
+                    {/* Top-right discrete save button */}
+                    <m.button
+                      type="button"
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => onToggleLibrary(book.id)}
+                      aria-label={inLib ? 'Quitar de mi biblioteca' : 'Añadir a mi biblioteca'}
+                      aria-pressed={inLib}
+                      className={cn(
+                        'absolute top-2 right-2 z-30 h-7 w-7 rounded-full backdrop-blur-md shadow-subtle inline-flex items-center justify-center transition-all duration-200',
+                        inLib
+                          ? 'bg-navy text-gold opacity-100'
+                          : 'bg-white/90 text-navy hover:bg-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+                      )}
+                    >
+                      <Bookmark className="h-3.5 w-3.5" fill={inLib ? 'currentColor' : 'none'} />
+                    </m.button>
 
-                      <div className="pointer-events-auto flex items-center gap-1 ml-auto">
-                        <m.button
-                          type="button"
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => onToggleLibrary(book.id)}
-                          aria-label={inLib ? 'Quitar de mi biblioteca' : 'Añadir a mi biblioteca'}
-                          aria-pressed={inLib}
-                          className={cn(
-                            'h-8 w-8 rounded-lg backdrop-blur-sm shadow-sm inline-flex items-center justify-center transition-colors',
-                            inLib
-                              ? 'bg-navy text-gold'
-                              : 'bg-white/95 text-navy hover:bg-white'
-                          )}
-                        >
-                          <Bookmark className="h-3.5 w-3.5" fill={inLib ? 'currentColor' : 'none'} />
-                        </m.button>
-                        <m.button
-                          type="button"
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => onToggleFavorite(book.id)}
-                          aria-label={fav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-                          aria-pressed={fav}
-                          className={cn(
-                            'h-8 w-8 rounded-lg backdrop-blur-sm shadow-sm inline-flex items-center justify-center transition-colors',
-                            fav
-                              ? 'bg-navy text-red-400'
-                              : 'bg-white/95 text-navy hover:bg-white'
-                          )}
-                        >
-                          <Heart className="h-3.5 w-3.5" fill={fav ? 'currentColor' : 'none'} />
-                        </m.button>
-                      </div>
+                    {/* Clean bottom hover controls (max 2) */}
+                    <div className="pointer-events-none absolute inset-x-2 bottom-4 flex items-center justify-between gap-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all duration-200 ease-out z-30">
+                      <m.button
+                        type="button"
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => onPreview(book)}
+                        aria-label={`Vista previa de ${book.title}`}
+                        className="pointer-events-auto h-7 px-2.5 rounded-full bg-white/95 backdrop-blur-md text-navy text-[11px] font-semibold shadow-subtle hover:bg-white inline-flex items-center gap-1 transition-colors"
+                      >
+                        <Eye className="h-3 w-3 text-gold-dark" />
+                        <span>Previa</span>
+                      </m.button>
+                      <m.button
+                        type="button"
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => onToggleFavorite(book.id)}
+                        aria-label={fav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                        aria-pressed={fav}
+                        className={cn(
+                          'pointer-events-auto h-7 w-7 rounded-full backdrop-blur-md shadow-subtle inline-flex items-center justify-center transition-colors',
+                          fav ? 'bg-navy text-red-400' : 'bg-white/95 text-navy hover:bg-white'
+                        )}
+                      >
+                        <Heart className="h-3 w-3" fill={fav ? 'currentColor' : 'none'} />
+                      </m.button>
                     </div>
                   </div>
 
-                  {/* Book Metadata */}
-                  <div className="mt-2.5 space-y-0.5 px-0.5 min-w-0">
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-gold-dark">
-                      <span className="truncate">{getDocumentTypeLabel(book.document_type)}</span>
-                      {book.year && (
-                        <>
-                          <span aria-hidden="true" className="text-line-strong">
-                            ·
-                          </span>
-                          <span className="tabular-nums text-ink-subtle font-medium">
-                            {book.year}
-                          </span>
-                        </>
-                      )}
-                      {slotIndex === 0 && canSlide && (
-                        <span className="ml-auto hidden sm:inline-block h-1.5 w-1.5 rounded-full bg-gold" />
-                      )}
-                    </div>
+                  {/* Minimal Editorial Metadata */}
+                  <div className="mt-2 space-y-0.5 px-0.5 min-w-0">
+                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-gold-dark truncate">
+                      {getDocumentTypeLabel(book.document_type)}
+                      {book.year ? ` · ${book.year}` : ''}
+                    </p>
                     <Link
                       to={`/libro/${book.id}`}
                       draggable={false}
-                      className="block text-sm font-semibold text-navy truncate group-hover:text-navy-secondary transition-colors"
+                      className="block text-[13px] font-semibold text-navy leading-[1.3] line-clamp-2 group-hover:text-forest transition-colors"
                     >
                       {book.title}
                     </Link>
-                    <p className="text-xs text-ink-muted truncate">
-                      {book.author}
-                      {book.category ? ` · ${book.category}` : ''}
-                    </p>
+                    <p className="text-[11.5px] text-ink-muted truncate">{book.author}</p>
                   </div>
                 </m.article>
               );
@@ -388,10 +329,10 @@ export function DiscoverBookCarousel({
         </div>
       </m.div>
 
-      {/* Bottom Animated Progress Indicator Dots */}
+      {/* Subtle Progress Indicator Dots */}
       {canSlide && (
         <div
-          className="mt-6 flex items-center justify-center gap-2"
+          className="pt-1 flex items-center justify-center gap-1.5"
           role="tablist"
           aria-label="Diapositivas de libros recomendados"
         >
@@ -406,10 +347,8 @@ export function DiscoverBookCarousel({
                 aria-label={`Ir al libro ${idx + 1}: ${b.title}`}
                 onClick={() => jumpTo(idx)}
                 className={cn(
-                  'relative h-2 rounded-full transition-all duration-300 overflow-hidden',
-                  isActive
-                    ? 'w-9 bg-navy/12'
-                    : 'w-2 bg-line-strong hover:bg-navy/40'
+                  'relative h-1.5 rounded-full transition-all duration-300 overflow-hidden',
+                  isActive ? 'w-7 bg-navy/15' : 'w-1.5 bg-line-strong hover:bg-navy/40'
                 )}
               >
                 {isActive && (
@@ -430,6 +369,6 @@ export function DiscoverBookCarousel({
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -4,32 +4,35 @@
 
 @layer base {
   :root {
-    --lex-navy: #101D35;
-    --lex-navy-secondary: #1C3152;
-    --lex-gold: #C5A15B;
+    --lex-navy: #121D32;
+    --lex-navy-secondary: #1D2E4D;
+    --lex-gold: #C1A15C;
+    --lex-forest: #294C43;
+    --lex-paper: #F7F6F2;
     --lex-white: #FFFFFF;
-    --lex-surface: #F4F6F9;
-    --lex-sand: #EFECE3;
-    --lex-sand-deep: #E0DAC7;
-    --lex-ink: #343B49;
-    --lex-line: #E6E9EF;
+    --lex-surface: #F1EFE9;
+    --lex-sand: #EFECE4;
+    --lex-sand-deep: #DFD9C9;
+    --lex-ink: #242C3A;
+    --lex-line: #E5E2D9;
   }
 
   html {
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     color: var(--lex-ink);
-    background-color: var(--lex-white);
+    background-color: var(--lex-paper);
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
     margin: 0;
+    background-color: var(--lex-paper);
     overflow-x: clip;
   }
 
   :focus-visible {
-    outline: 2px solid #C5A15B;
+    outline: 2px solid #C1A15C;
     outline-offset: 2px;
   }
 }
@@ -55,15 +58,36 @@
 }
 
 .react-pdf__Page__textContent span::selection {
-  background: rgba(197, 161, 91, 0.35);
+  background: rgba(193, 161, 92, 0.36);
 }
 
 .lex-pdf-sepia .react-pdf__Page__canvas {
-  filter: sepia(0.28) contrast(0.95) brightness(0.97);
+  filter: sepia(0.24) contrast(0.96) brightness(0.97);
 }
 
 .lex-pdf-dark-page .react-pdf__Page__canvas {
-  filter: invert(0.88) hue-rotate(180deg) contrast(0.95);
+  filter: invert(0.88) hue-rotate(180deg) contrast(0.94);
+}
+
+/* Warm Editorial Skeleton Shimmer */
+@keyframes editorial-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.editorial-shimmer {
+  background: linear-gradient(
+    90deg,
+    #ece8de 0%,
+    #f6f4ee 45%,
+    #ece8de 90%
+  );
+  background-size: 200% 100%;
+  animation: editorial-shimmer 1.8s ease-in-out infinite;
 }
 
 /* LexMascot GPU-accelerated CSS sprite animation (17 frames: 0..15 wave + 16 rest) */
@@ -81,14 +105,14 @@
   will-change: transform;
 }
 
-/* Tactile 3D Hardcover Book Polish */
+/* Tactile 3D Hardcover Book Polish (single coordinated elevation) */
 .lex-book-3d {
   transform-style: preserve-3d;
-  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .group:hover .lex-book-3d {
-  transform: perspective(900px) rotateY(-6deg) translateY(-3px);
+  transform: perspective(900px) rotateY(-5deg) translateY(-4px);
 }
 
 .lex-book-linen {

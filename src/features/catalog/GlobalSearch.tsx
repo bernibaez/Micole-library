@@ -113,10 +113,10 @@ export function GlobalSearch({ className, placeholder = 'Buscar libros, leyes, a
         }}
         role="search"
         className={cn(
-          'flex items-center gap-2.5 h-10 rounded-full bg-surface-secondary border transition-all duration-200 px-3.5 origin-center',
+          'flex items-center gap-2.5 h-9 sm:h-10 rounded-full bg-white border transition-all duration-200 px-3.5 origin-center shadow-subtle',
           open
-            ? 'bg-white border-navy/35 shadow-subtle ring-2 ring-navy/5'
-            : 'border-transparent hover:border-line-strong'
+            ? 'border-navy/35 ring-2 ring-navy/10'
+            : 'border-line hover:border-line-strong'
         )}
       >
         <Search className="h-4 w-4 text-ink-muted shrink-0" aria-hidden="true" />

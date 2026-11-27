@@ -5,33 +5,43 @@ export default {
     extend: {
       colors: {
         navy: {
-          DEFAULT: '#101D35',
-          secondary: '#1C3152',
-          muted: '#2A4063',
+          DEFAULT: '#121D32',
+          secondary: '#1D2E4D',
+          muted: '#2D4164',
         },
         gold: {
-          DEFAULT: '#C5A15B',
-          soft: '#F7F1E3',
-          dark: '#967638',
+          DEFAULT: '#C1A15C',
+          soft: '#F5EFE0',
+          dark: '#927437',
+        },
+        forest: {
+          DEFAULT: '#294C43',
+          soft: '#EBF2EF',
+          hover: '#1F3B34',
+        },
+        paper: {
+          DEFAULT: '#F7F6F2',
+          warm: '#EFECE4',
+          deep: '#E4DFD3',
         },
         surface: {
           DEFAULT: '#FFFFFF',
-          secondary: '#F4F6F9',
-          tertiary: '#EAEEF4',
+          secondary: '#F1EFE9',
+          tertiary: '#E7E4DC',
         },
         sand: {
-          DEFAULT: '#EFECE3',
-          deep: '#E0DAC7',
-          soft: '#F7F5EE',
+          DEFAULT: '#EFECE4',
+          deep: '#DFD9C9',
+          soft: '#F7F6F2',
         },
         ink: {
-          DEFAULT: '#343B49',
-          muted: '#636D7E',
-          subtle: '#8A94A6',
+          DEFAULT: '#242C3A',
+          muted: '#5A6475',
+          subtle: '#7F899B',
         },
         line: {
-          DEFAULT: '#E6E9EF',
-          strong: '#D3D9E3',
+          DEFAULT: '#E5E2D9',
+          strong: '#D4CFC2',
         },
       },
       fontFamily: {
@@ -39,12 +49,12 @@ export default {
         editorial: ['"Playfair Display"', 'Georgia', 'serif'],
       },
       boxShadow: {
-        cover: '0 8px 20px -6px rgba(16, 29, 53, 0.22), 0 3px 8px -2px rgba(16, 29, 53, 0.12), -3px 2px 6px rgba(16, 29, 53, 0.08)',
-        'cover-hover': '0 22px 38px -10px rgba(16, 29, 53, 0.30), 0 8px 16px -4px rgba(16, 29, 53, 0.14), -4px 4px 10px rgba(16, 29, 53, 0.10)',
-        'editorial-cover': '0 20px 36px -10px rgba(16, 29, 53, 0.28), 0 6px 14px -4px rgba(16, 29, 53, 0.12)',
-        pill: '0 10px 28px -10px rgba(16, 29, 53, 0.12), 0 2px 8px -2px rgba(16, 29, 53, 0.05)',
-        subtle: '0 1px 2px rgba(16, 29, 53, 0.04), 0 4px 12px rgba(16, 29, 53, 0.04)',
-        popover: '0 10px 30px -5px rgba(16, 29, 53, 0.12), 0 4px 12px -4px rgba(16, 29, 53, 0.06)',
+        cover: '0 8px 18px -6px rgba(18, 29, 50, 0.22), 0 3px 7px -2px rgba(18, 29, 50, 0.12), -3px 2px 5px rgba(18, 29, 50, 0.08)',
+        'cover-hover': '0 18px 34px -10px rgba(18, 29, 50, 0.28), 0 7px 14px -4px rgba(18, 29, 50, 0.14), -4px 4px 10px rgba(18, 29, 50, 0.09)',
+        'editorial-cover': '0 16px 30px -10px rgba(18, 29, 50, 0.24), 0 5px 12px -4px rgba(18, 29, 50, 0.10)',
+        pill: '0 8px 24px -10px rgba(18, 29, 50, 0.10), 0 2px 6px -2px rgba(18, 29, 50, 0.04)',
+        subtle: '0 1px 2px rgba(18, 29, 50, 0.04), 0 4px 14px rgba(18, 29, 50, 0.04)',
+        popover: '0 12px 32px -6px rgba(18, 29, 50, 0.14), 0 4px 12px -4px rgba(18, 29, 50, 0.06)',
       },
       borderRadius: {
         book: '3px 11px 11px 3px',

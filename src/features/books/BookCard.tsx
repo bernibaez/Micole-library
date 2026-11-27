@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { m } from 'motion/react';
-import { Bookmark, BookOpen, Eye, FileText, Heart } from 'lucide-react';
+import { Bookmark, BookOpen, Eye, Heart } from 'lucide-react';
 import type { Book, ReadingProgress } from '../../types';
 import { BookCover } from './BookCover';
 import { Badge } from '../../components/ui/Badge';
@@ -31,19 +31,18 @@ export function BookCard({
   onPreview,
   className,
 }: BookCardProps) {
-  const staggerDelay = Math.min(index, 8) * 0.045;
+  const staggerDelay = Math.min(index, 8) * 0.035;
 
   return (
     <m.article
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={VIEWPORT_ONCE}
-      whileHover={{ y: -6 }}
       transition={{
-        opacity: { duration: 0.34, delay: staggerDelay, ease: EASE_EDITORIAL },
-        y: { duration: 0.24, ease: EASE_EDITORIAL },
+        opacity: { duration: 0.3, delay: staggerDelay, ease: EASE_EDITORIAL },
+        y: { duration: 0.28, delay: staggerDelay, ease: EASE_EDITORIAL },
       }}
-      className={cn('group flex flex-col min-w-0 will-change-transform', className)}
+      className={cn('group flex flex-col min-w-0', className)}
     >
       <div className="relative">
         <Link
@@ -57,42 +56,45 @@ export function BookCard({
           />
         </Link>
 
-        {/* Subtle grounded shadow beneath physical book */}
+        {/* Grounded soft contact shadow beneath physical book */}
         <div
           aria-hidden="true"
-          className="pointer-events-none mx-2.5 mt-1 h-2 rounded-full bg-navy/10 blur-md opacity-70 transition-all duration-300 group-hover:opacity-100"
+          className="pointer-events-none mx-2.5 mt-1 h-1.5 rounded-full bg-navy/12 blur-[6px] opacity-65 transition-all duration-300 group-hover:opacity-95 group-hover:scale-x-95"
         />
 
-        {/* Discrete hover quick actions */}
-        <div className="pointer-events-none absolute inset-x-2 bottom-5 z-30 flex items-center justify-between gap-1.5 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all duration-200 ease-out">
-          {onPreview && (
-            <m.button
-              type="button"
-              whileTap={{ scale: 0.96 }}
-              onClick={() => onPreview(book)}
-              aria-label={`Vista previa de ${book.title}`}
-              className="pointer-events-auto h-8 px-2.5 rounded-lg bg-white/95 backdrop-blur-sm text-navy text-[11px] font-semibold shadow-sm hover:bg-white inline-flex items-center gap-1 transition-colors"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Vista previa
-            </m.button>
-          )}
-          <div className="pointer-events-auto flex items-center gap-1 ml-auto">
-            {onToggleLibrary && (
+        {/* Top-right discrete save toggle (stays visible if already saved) */}
+        {onToggleLibrary && (
+          <m.button
+            type="button"
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onToggleLibrary(book.id)}
+            aria-label={inLibrary ? 'Quitar de mi biblioteca' : 'Añadir a mi biblioteca'}
+            aria-pressed={inLibrary}
+            title={inLibrary ? 'En mi biblioteca' : 'Guardar en biblioteca'}
+            className={cn(
+              'absolute top-2 right-2 z-30 h-7 w-7 rounded-full backdrop-blur-md shadow-subtle inline-flex items-center justify-center transition-all duration-200',
+              inLibrary
+                ? 'bg-navy text-gold opacity-100'
+                : 'bg-white/90 text-navy hover:bg-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+            )}
+          >
+            <Bookmark className="h-3.5 w-3.5" fill={inLibrary ? 'currentColor' : 'none'} />
+          </m.button>
+        )}
+
+        {/* Simplified editorial hover actions (max 2 compact controls) */}
+        {(onPreview || onToggleFavorite) && (
+          <div className="pointer-events-none absolute inset-x-2 bottom-4 z-30 flex items-center justify-between gap-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all duration-200 ease-out">
+            {onPreview && (
               <m.button
                 type="button"
-                whileTap={{ scale: 0.9 }}
-                onClick={() => onToggleLibrary(book.id)}
-                aria-label={inLibrary ? 'Quitar de mi biblioteca' : 'Añadir a mi biblioteca'}
-                aria-pressed={inLibrary}
-                className={cn(
-                  'h-8 w-8 rounded-lg backdrop-blur-sm shadow-sm inline-flex items-center justify-center transition-colors',
-                  inLibrary
-                    ? 'bg-navy text-gold'
-                    : 'bg-white/95 text-navy hover:bg-white'
-                )}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => onPreview(book)}
+                aria-label={`Vista previa de ${book.title}`}
+                className="pointer-events-auto h-7 px-2.5 rounded-full bg-white/95 backdrop-blur-md text-navy text-[11px] font-semibold shadow-subtle hover:bg-white inline-flex items-center gap-1 transition-colors"
               >
-                <Bookmark className="h-3.5 w-3.5" fill={inLibrary ? 'currentColor' : 'none'} />
+                <Eye className="h-3 w-3 text-gold-dark" />
+                <span>Previa</span>
               </m.button>
             )}
             {onToggleFavorite && (
@@ -103,42 +105,38 @@ export function BookCard({
                 aria-label={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
                 aria-pressed={isFavorite}
                 className={cn(
-                  'h-8 w-8 rounded-lg backdrop-blur-sm shadow-sm inline-flex items-center justify-center transition-colors',
+                  'pointer-events-auto ml-auto h-7 w-7 rounded-full backdrop-blur-md shadow-subtle inline-flex items-center justify-center transition-colors',
                   isFavorite
                     ? 'bg-navy text-red-400'
                     : 'bg-white/95 text-navy hover:bg-white'
                 )}
               >
-                <Heart className="h-3.5 w-3.5" fill={isFavorite ? 'currentColor' : 'none'} />
+                <Heart className="h-3 w-3" fill={isFavorite ? 'currentColor' : 'none'} />
               </m.button>
             )}
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="mt-3 space-y-1 min-w-0">
+      {/* Editorial Metadata (clean 2-line title + quiet author + optional progress) */}
+      <div className="mt-2 space-y-0.5 min-w-0 px-0.5">
         <Link
           to={`/libro/${book.id}`}
-          className="block text-[14px] font-semibold text-navy leading-snug line-clamp-2 group-hover:text-navy-secondary transition-colors"
+          className="block text-[13px] font-semibold text-navy leading-[1.3] line-clamp-2 group-hover:text-forest transition-colors"
         >
           {book.title}
         </Link>
-        <p className="text-xs text-ink-muted truncate">{book.author}</p>
-        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-ink-subtle pt-0.5">
-          {book.year && <span>{book.year}</span>}
-          {book.year && <span aria-hidden="true">·</span>}
-          <span className="truncate max-w-[120px]">{book.category}</span>
-          <span aria-hidden="true">·</span>
-          <span className="inline-flex items-center gap-0.5 font-medium text-navy/80">
-            <FileText className="h-3 w-3 text-gold-dark" aria-hidden="true" />
-            {(book.file_extension || 'PDF').toUpperCase()}
-          </span>
-        </div>
-        {progress && progress.progress_percent > 0 && (
-          <p className="text-[11px] font-medium text-gold-dark pt-0.5">
+        <p className="text-[11.5px] text-ink-muted truncate">{book.author}</p>
+        {progress && progress.progress_percent > 0 ? (
+          <p className="text-[10.5px] font-medium text-gold-dark pt-0.5 tabular-nums">
             {progress.progress_percent >= 100
               ? 'Completado'
-              : `Pág. ${progress.current_page}${progress.total_pages ? ` de ${progress.total_pages}` : ''} · ${Math.round(progress.progress_percent)}%`}
+              : `${Math.round(progress.progress_percent)}% · Pág. ${progress.current_page}`}
+          </p>
+        ) : (
+          <p className="text-[10.5px] text-ink-subtle truncate">
+            {book.year ? `${book.year} · ` : ''}
+            {book.category}
           </p>
         )}
       </div>
@@ -156,17 +154,17 @@ export function BookListItem({
   onToggleFavorite,
   onPreview,
 }: BookCardProps) {
-  const staggerDelay = Math.min(index, 8) * 0.04;
+  const staggerDelay = Math.min(index, 8) * 0.035;
 
   return (
     <m.article
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={VIEWPORT_ONCE}
-      transition={{ duration: 0.3, delay: staggerDelay, ease: EASE_EDITORIAL }}
+      transition={{ duration: 0.28, delay: staggerDelay, ease: EASE_EDITORIAL }}
       className="group flex items-start gap-4 sm:gap-5 py-4 border-b border-line last:border-b-0"
     >
-      <Link to={`/libro/${book.id}`} className="w-20 sm:w-24 shrink-0">
+      <Link to={`/libro/${book.id}`} className="w-[74px] sm:w-[86px] shrink-0">
         <BookCover
           book={book}
           size="sm"
@@ -177,75 +175,85 @@ export function BookListItem({
 
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="neutral">{book.category}</Badge>
-          <Badge variant="outline">{getDocumentTypeLabel(book.document_type)}</Badge>
-          <Badge variant="gold">{(book.file_extension || 'PDF').toUpperCase()}</Badge>
-          {book.year && <span className="text-xs text-ink-subtle">{book.year}</span>}
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gold-dark">
+            {getDocumentTypeLabel(book.document_type)}
+          </span>
+          <span className="text-line-strong" aria-hidden="true">·</span>
+          <span className="text-[11px] font-medium text-ink-muted">{book.category}</span>
+          {book.year && (
+            <>
+              <span className="text-line-strong" aria-hidden="true">·</span>
+              <span className="text-[11px] text-ink-subtle tabular-nums">{book.year}</span>
+            </>
+          )}
+          {book.validity_status === 'vigente' && (
+            <Badge variant="forest-soft" className="ml-0.5 text-[10px] py-0">
+              Vigente
+            </Badge>
+          )}
         </div>
 
         <Link
           to={`/libro/${book.id}`}
-          className="block text-base font-semibold text-navy hover:text-navy-secondary leading-snug transition-colors"
+          className="block font-editorial text-[17px] font-semibold text-navy hover:text-forest leading-snug transition-colors"
         >
           {book.title}
         </Link>
         <p className="text-xs font-medium text-ink-muted">{book.author}</p>
         {book.description && (
-          <p className="text-xs sm:text-sm text-ink-muted line-clamp-2 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-[13px] text-ink-muted line-clamp-2 leading-relaxed max-w-2xl">
             {book.description}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-1.5">
           {(book.file_url || book.drive_file_id) && book.allow_preview !== false && (
             <Link
               to={`/leer/${book.id}`}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[#101D35] text-white text-xs font-medium hover:bg-[#1C3152] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-navy text-white text-xs font-medium hover:bg-navy-secondary transition-colors"
             >
-              <BookOpen className="h-3.5 w-3.5" />
+              <BookOpen className="h-3.5 w-3.5 text-gold" />
               Leer ahora
             </Link>
           )}
           {onPreview && (
             <m.button
               type="button"
-              whileHover={{ scale: 1.015 }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => onPreview(book)}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-line-strong text-navy text-xs font-medium hover:bg-surface-secondary transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-line-strong bg-white text-navy text-xs font-medium hover:bg-paper-warm transition-colors"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-3.5 w-3.5 text-ink-muted" />
               Vista previa
             </m.button>
           )}
           {onToggleLibrary && (
             <m.button
               type="button"
-              whileHover={{ scale: 1.015 }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: 0.94 }}
               onClick={() => onToggleLibrary(book.id)}
+              aria-label={inLibrary ? 'Quitar de mi biblioteca' : 'Guardar en biblioteca'}
               className={cn(
-                'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-colors',
+                'inline-flex items-center justify-center h-8 w-8 rounded-full border transition-colors',
                 inLibrary
-                  ? 'border-navy bg-navy/5 text-navy'
-                  : 'border-line text-ink-muted hover:text-navy hover:bg-surface-secondary'
+                  ? 'border-navy bg-navy text-gold'
+                  : 'border-line bg-white text-ink-muted hover:text-navy hover:bg-paper-warm'
               )}
             >
               <Bookmark className="h-3.5 w-3.5" fill={inLibrary ? 'currentColor' : 'none'} />
-              {inLibrary ? 'En biblioteca' : 'Guardar'}
             </m.button>
           )}
           {onToggleFavorite && (
             <m.button
               type="button"
-              whileTap={{ scale: 0.92 }}
+              whileTap={{ scale: 0.94 }}
               onClick={() => onToggleFavorite(book.id)}
               aria-label={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
               className={cn(
-                'inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors',
+                'inline-flex items-center justify-center h-8 w-8 rounded-full border transition-colors',
                 isFavorite
                   ? 'border-red-200 bg-red-50 text-red-600'
-                  : 'border-line text-ink-muted hover:text-navy hover:bg-surface-secondary'
+                  : 'border-line bg-white text-ink-muted hover:text-navy hover:bg-paper-warm'
               )}
             >
               <Heart className="h-3.5 w-3.5" fill={isFavorite ? 'currentColor' : 'none'} />

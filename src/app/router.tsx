@@ -123,11 +123,14 @@ function ShellLayout() {
 function NotFoundPage() {
   return (
     <EmptyState
+      mascot="not-found"
       title="Página no encontrada"
       description="La ruta que intentas visitar no existe en MICOLE LIBRARY."
       action={
         <Link to="/">
-          <Button variant="primary">Volver al inicio</Button>
+          <Button variant="primary" className="rounded-full">
+            Volver al inicio
+          </Button>
         </Link>
       }
     />
@@ -140,7 +143,7 @@ export function AppRouter() {
       <ScrollToTop />
       <Suspense
         fallback={
-          <div className="min-h-dvh flex items-center justify-center p-8 bg-white">
+          <div className="min-h-dvh flex items-center justify-center p-8 bg-paper">
             <div className="w-full max-w-4xl">
               <BookGridSkeleton count={6} />
             </div>

@@ -28,6 +28,7 @@ import {
   toggleLibraryBook,
   togglePageBookmark,
   updateLibraryStatus,
+  upsertPageBookmarkNote,
   upsertReadingProgress,
   type PersonalLibrarySnapshot,
 } from '../../services/libraryService';
@@ -374,6 +375,24 @@ export function usePersonalLibrary() {
     return added;
   };
 
+  const handleSaveBookmarkNote = async (
+    bookId: string,
+    pageNumber: number,
+    label: string,
+    note: string
+  ) => {
+    if (!requireAuth('guardar notas y marcadores')) return false;
+    try {
+      await upsertPageBookmarkNote(userId!, bookId, pageNumber, label, note);
+      invalidate();
+      notify(`Nota guardada en página ${pageNumber}`);
+      return true;
+    } catch {
+      notify('No se pudo guardar la nota.', 'error');
+      return false;
+    }
+  };
+
   return {
     ...query,
     snapshot: data,
@@ -387,6 +406,7 @@ export function usePersonalLibrary() {
     saveProgress,
     logHistory,
     handleToggleBookmark,
+    handleSaveBookmarkNote,
     updateStatus: (bookId: string, status: LibraryStatus) => {
       if (!requireAuth('actualizar tu estado de lectura')) return;
       statusMutation.mutate({ bookId, status });

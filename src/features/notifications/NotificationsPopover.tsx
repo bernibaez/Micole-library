@@ -40,11 +40,11 @@ export function NotificationsPopover() {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ''}`}
         aria-expanded={open}
-        className="relative h-10 w-10 rounded-full inline-flex items-center justify-center text-ink-muted hover:text-navy hover:bg-surface-secondary transition-colors"
+        className="relative h-9 w-9 rounded-full inline-flex items-center justify-center text-ink-muted hover:text-navy hover:bg-navy/[0.06] transition-colors"
       >
-        <Bell className="h-[19px] w-[19px]" />
+        <Bell className="h-[18px] w-[18px]" strokeWidth={1.8} />
         {unreadCount > 0 && (
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-gold ring-2 ring-white" />
+          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-gold ring-2 ring-paper" />
         )}
       </button>
 
@@ -55,7 +55,7 @@ export function NotificationsPopover() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
             transition={TRANSITION_MICRO}
-            className="absolute right-0 mt-2 w-[320px] sm:w-[360px] rounded-2xl bg-white border border-line shadow-popover overflow-hidden z-40"
+            className="absolute right-0 mt-2 w-[320px] sm:w-[360px] max-w-[calc(100vw-1.5rem)] rounded-2xl bg-white border border-line shadow-popover overflow-hidden z-40"
           >
             <div className="px-4 py-3 border-b border-line flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">

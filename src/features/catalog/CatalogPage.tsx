@@ -82,6 +82,7 @@ export function CatalogPage() {
   const viewMode = viewModeOverride ?? preferences.catalog_view;
   const setViewMode = setViewModeOverride;
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
   const [paginationState, setPaginationState] = useState<{ key: string; count: number }>({
     key: searchParams.toString(),
     count: PAGE_SIZE,
@@ -556,11 +557,52 @@ export function CatalogPage() {
         </section>
       )}
 
-      {/* Filter Toolbar */}
-      <div className="space-y-3 pb-4 border-b border-line">
+      {/* Editorial Category Filter Pills */}
+      {categoryNames.length > 0 && (
+        <div
+          role="region"
+          aria-label="Filtrar por categoría"
+          className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1"
+        >
+          <button
+            type="button"
+            onClick={() => updateParam('categoria', '')}
+            className={cn(
+              'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors',
+              !category
+                ? 'bg-navy text-white border-navy shadow-subtle'
+                : 'bg-white text-ink-muted border-line hover:text-navy hover:border-line-strong'
+            )}
+          >
+            Todas
+          </button>
+          {categoryNames.map((catName) => {
+            const isActive =
+              (activeCategoryObj?.name ?? category).toLowerCase() === catName.toLowerCase();
+            return (
+              <button
+                key={catName}
+                type="button"
+                onClick={() => updateParam('categoria', isActive ? '' : catName)}
+                className={cn(
+                  'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium border transition-colors whitespace-nowrap',
+                  isActive
+                    ? 'bg-navy text-white border-navy shadow-subtle'
+                    : 'bg-white text-ink-muted border-line hover:text-navy hover:border-line-strong'
+                )}
+              >
+                {catName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Clean Curatorial Search & Controls Bar */}
+      <div className="space-y-3 pb-4 border-b border-line/85">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex-1 min-w-[220px] flex items-center gap-2 h-10 rounded-xl border border-line-strong bg-white px-3 focus-within:border-navy focus-within:ring-2 focus-within:ring-navy/10">
-            <Search className="h-4 w-4 text-ink-muted shrink-0" />
+          <div className="flex-1 min-w-[220px] flex items-center gap-2 h-10 rounded-full border border-line bg-white px-4 shadow-subtle focus-within:border-navy/40 focus-within:ring-2 focus-within:ring-navy/10 transition-all">
+            <Search className="h-4 w-4 text-ink-subtle shrink-0" />
             <input
               type="search"
               value={inputQuery}
@@ -584,113 +626,61 @@ export function CatalogPage() {
             )}
           </div>
 
+          {/* Sort Pill */}
+          <select
+            aria-label="Ordenar resultados"
+            value={sort}
+            onChange={(e) => updateParam('orden', e.target.value)}
+            className="hidden sm:block h-10 rounded-full border border-line bg-white px-3.5 text-xs font-medium text-navy shadow-subtle focus:border-navy/40 focus:outline-none cursor-pointer"
+          >
+            <option value="relevance">Orden: Relevancia</option>
+            <option value="recent">Orden: Más recientes</option>
+            <option value="popular">Orden: Popularidad</option>
+            <option value="title">Orden: Título (A-Z)</option>
+          </select>
+
+          {/* Mobile Filters Sheet Trigger */}
           <Button
             variant="secondary"
             size="md"
-            className="lg:hidden"
+            className="lg:hidden rounded-full"
             onClick={() => setFilterSheetOpen(true)}
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className="h-3.5 w-3.5" />
             Filtros
             {activeChips.length > 0 && (
-              <span className="ml-0.5 h-5 min-w-5 px-1 rounded-full bg-navy text-white text-[11px] inline-flex items-center justify-center">
+              <span className="ml-0.5 h-5 min-w-5 px-1 rounded-full bg-forest text-white text-[11px] inline-flex items-center justify-center">
                 {activeChips.length}
               </span>
             )}
           </Button>
 
-          <div className="hidden lg:flex items-center gap-2 flex-wrap">
-            <select
-              aria-label="Filtrar por categoría"
-              value={activeCategoryObj?.name ?? category}
-              onChange={(e) => updateParam('categoria', e.target.value)}
-              className="h-10 rounded-xl border border-line-strong bg-white px-3 text-xs font-medium text-ink max-w-[175px]"
-            >
-              <option value="">Categorías</option>
-              {categoryNames.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="Filtrar por tipo de documento"
-              value={type}
-              onChange={(e) => updateParam('tipo', e.target.value)}
-              className="h-10 rounded-xl border border-line-strong bg-white px-3 text-xs font-medium text-ink"
-            >
-              <option value="">Tipo</option>
-              {Object.entries(DOCUMENT_TYPE_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="Filtrar por vigencia"
-              value={validity}
-              onChange={(e) => updateParam('vigencia', e.target.value)}
-              className="h-10 rounded-xl border border-line-strong bg-white px-3 text-xs font-medium text-ink"
-            >
-              <option value="">Vigencia</option>
-              {Object.entries(VALIDITY_STATUS_LABELS)
-                .filter(([k]) => k !== 'no_aplica')
-                .map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-            </select>
-
-            {subjects.length > 0 && (
-              <select
-                aria-label="Filtrar por materia"
-                value={subject}
-                onChange={(e) => updateParam('materia', e.target.value)}
-                className="h-10 rounded-xl border border-line-strong bg-white px-3 text-xs font-medium text-ink max-w-[155px]"
+          {/* Desktop Collapsible Advanced Filters Trigger */}
+          <Button
+            variant={desktopFiltersOpen ? 'primary' : 'secondary'}
+            size="md"
+            className="hidden lg:inline-flex rounded-full"
+            aria-expanded={desktopFiltersOpen}
+            onClick={() => setDesktopFiltersOpen((v) => !v)}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filtros avanzados
+            {activeChips.filter((c) => c.key !== 'q' && c.key !== 'categoria').length > 0 && (
+              <span
+                className={cn(
+                  'ml-0.5 h-5 min-w-5 px-1 rounded-full text-[11px] inline-flex items-center justify-center',
+                  desktopFiltersOpen ? 'bg-gold text-navy font-semibold' : 'bg-forest text-white'
+                )}
               >
-                <option value="">Materia</option>
-                {subjects.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                {activeChips.filter((c) => c.key !== 'q' && c.key !== 'categoria').length}
+              </span>
             )}
-
-            <select
-              aria-label="Filtrar por año"
-              value={year}
-              onChange={(e) => updateParam('anio', e.target.value)}
-              className="h-10 rounded-xl border border-line-strong bg-white px-3 text-xs font-medium text-ink"
-            >
-              <option value="">Año</option>
-              {years.map((y) => (
-                <option key={y} value={String(y)}>
-                  {y}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="Ordenar resultados"
-              value={sort}
-              onChange={(e) => updateParam('orden', e.target.value)}
-              className="h-10 rounded-xl border border-line-strong bg-white px-3 text-xs font-medium text-ink"
-            >
-              <option value="relevance">Relevancia</option>
-              <option value="recent">Más recientes</option>
-              <option value="popular">Popularidad</option>
-              <option value="title">Título (A-Z)</option>
-            </select>
-          </div>
+          </Button>
 
           <div
             role="group"
             aria-label="Modo de visualización"
-            className="inline-flex items-center rounded-xl border border-line-strong bg-surface-secondary p-0.5"
+            className="inline-flex items-center rounded-full border border-line bg-white p-1 shadow-subtle"
           >
             <button
               type="button"
@@ -698,13 +688,13 @@ export function CatalogPage() {
               aria-label="Vista en cuadrícula"
               aria-pressed={viewMode === 'grid'}
               className={cn(
-                'h-8 w-8 rounded-lg inline-flex items-center justify-center transition-colors',
+                'h-8 w-8 rounded-full inline-flex items-center justify-center transition-colors',
                 viewMode === 'grid'
-                  ? 'bg-white text-navy shadow-sm'
+                  ? 'bg-navy text-white shadow-xs'
                   : 'text-ink-muted hover:text-navy'
               )}
             >
-              <LayoutGrid className="h-4 w-4" />
+              <LayoutGrid className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -712,16 +702,128 @@ export function CatalogPage() {
               aria-label="Vista en lista"
               aria-pressed={viewMode === 'list'}
               className={cn(
-                'h-8 w-8 rounded-lg inline-flex items-center justify-center transition-colors',
+                'h-8 w-8 rounded-full inline-flex items-center justify-center transition-colors',
                 viewMode === 'list'
-                  ? 'bg-white text-navy shadow-sm'
+                  ? 'bg-navy text-white shadow-xs'
                   : 'text-ink-muted hover:text-navy'
               )}
             >
-              <List className="h-4 w-4" />
+              <List className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
+
+        {/* Collapsible Desktop Advanced Filters Panel */}
+        <AnimatePresence initial={false}>
+          {desktopFiltersOpen && (
+            <m.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: EASE_EDITORIAL }}
+              className="hidden lg:block overflow-hidden"
+            >
+              <div className="grid grid-cols-5 gap-3 rounded-2xl border border-line bg-white p-4 shadow-subtle">
+                <label className="space-y-1 text-xs">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
+                    Tipo de documento
+                  </span>
+                  <select
+                    aria-label="Filtrar por tipo de documento"
+                    value={type}
+                    onChange={(e) => updateParam('tipo', e.target.value)}
+                    className="w-full h-9 rounded-xl border border-line bg-paper/60 px-2.5 text-xs font-medium text-navy focus:border-navy/40 focus:outline-none"
+                  >
+                    <option value="">Todos los tipos</option>
+                    {Object.entries(DOCUMENT_TYPE_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-xs">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
+                    Estado de vigencia
+                  </span>
+                  <select
+                    aria-label="Filtrar por vigencia"
+                    value={validity}
+                    onChange={(e) => updateParam('vigencia', e.target.value)}
+                    className="w-full h-9 rounded-xl border border-line bg-paper/60 px-2.5 text-xs font-medium text-navy focus:border-navy/40 focus:outline-none"
+                  >
+                    <option value="">Cualquier vigencia</option>
+                    {Object.entries(VALIDITY_STATUS_LABELS)
+                      .filter(([k]) => k !== 'no_aplica')
+                      .map(([k, label]) => (
+                        <option key={k} value={k}>
+                          {label}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-xs">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
+                    Materia
+                  </span>
+                  <select
+                    aria-label="Filtrar por materia"
+                    value={subject}
+                    onChange={(e) => updateParam('materia', e.target.value)}
+                    className="w-full h-9 rounded-xl border border-line bg-paper/60 px-2.5 text-xs font-medium text-navy focus:border-navy/40 focus:outline-none"
+                  >
+                    <option value="">Todas las materias</option>
+                    {subjects.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-xs">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
+                    Autor
+                  </span>
+                  <select
+                    aria-label="Filtrar por autor"
+                    value={author}
+                    onChange={(e) => updateParam('autor', e.target.value)}
+                    className="w-full h-9 rounded-xl border border-line bg-paper/60 px-2.5 text-xs font-medium text-navy focus:border-navy/40 focus:outline-none"
+                  >
+                    <option value="">Todos los autores</option>
+                    {authors.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-xs">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
+                    Año de publicación
+                  </span>
+                  <select
+                    aria-label="Filtrar por año"
+                    value={year}
+                    onChange={(e) => updateParam('anio', e.target.value)}
+                    className="w-full h-9 rounded-xl border border-line bg-paper/60 px-2.5 text-xs font-medium text-navy focus:border-navy/40 focus:outline-none"
+                  >
+                    <option value="">Cualquier año</option>
+                    {years.map((y) => (
+                      <option key={y} value={String(y)}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </m.div>
+          )}
+        </AnimatePresence>
 
         {/* Active Filter Chips */}
         <AnimatePresence>
@@ -744,7 +846,7 @@ export function CatalogPage() {
                     whileTap={{ scale: 0.96 }}
                     transition={TRANSITION_MICRO}
                     onClick={chip.clear}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-navy/5 border border-navy/15 px-3 py-1 text-xs font-medium text-navy hover:bg-navy/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-forest-soft border border-forest/20 px-3 py-1 text-xs font-medium text-forest hover:bg-forest/15 transition-colors"
                   >
                     <span>{chip.label}</span>
                     <X className="h-3 w-3" />

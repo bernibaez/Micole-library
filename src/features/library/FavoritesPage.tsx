@@ -56,12 +56,14 @@ export function FavoritesPage() {
 
       {favoriteBooks.length === 0 ? (
         <EmptyState
-          icon={<Heart className="h-5 w-5" />}
+          mascot="not-found"
           title="Aún no tienes libros favoritos"
           description="Pulsa el corazón sobre cualquier libro del catálogo o en su página de detalles para tenerlo siempre a mano."
           action={
             <Link to="/explorar">
-              <Button variant="primary">Descubrir recursos</Button>
+              <Button variant="primary" className="rounded-full">
+                Descubrir recursos
+              </Button>
             </Link>
           }
         />

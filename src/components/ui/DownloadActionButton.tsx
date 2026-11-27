@@ -85,7 +85,7 @@ export function DownloadActionButton({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={TRANSITION_MICRO}
-            className="inline-flex items-center gap-2 text-emerald-700"
+            className="inline-flex items-center gap-2 text-forest"
           >
             <Check className="h-4 w-4 shrink-0" />
             <span className={labelClass}>{successLabel}</span>

@@ -34,7 +34,7 @@ export function BookCover({ book, progressPercent, size = 'md', className }: Boo
           'lex-book-3d relative aspect-[2/3] w-full overflow-hidden rounded-book shadow-cover',
           className
         )}
-        style={{ backgroundColor: book.color || '#101D35' }}
+        style={{ backgroundColor: book.color || '#121D32' }}
       >
         {book.cover_url ? (
           <img
@@ -42,32 +42,32 @@ export function BookCover({ book, progressPercent, size = 'md', className }: Boo
             alt={`Portada de ${book.title}`}
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="lex-book-linen relative h-full w-full flex flex-col justify-between p-3 sm:p-4 text-white">
+          <div className="lex-book-linen relative h-full w-full flex flex-col justify-between p-2.5 sm:p-3 text-white">
             {/* Refined double gold editorial border inset */}
             <div
               aria-hidden="true"
               className={cn(
                 'pointer-events-none absolute rounded-[2px_8px_8px_2px] border border-gold/30',
-                isSmall ? 'inset-1.5 left-2.5' : 'inset-2.5 left-4'
+                isSmall ? 'inset-1.5 left-2.5' : 'inset-2 left-3.5'
               )}
             />
             {!isSmall && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-[14px] left-[20px] rounded-[1px_5px_5px_1px] border border-white/[0.08]"
+                className="pointer-events-none absolute inset-[12px] left-[18px] rounded-[1px_5px_5px_1px] border border-white/[0.08]"
               />
             )}
 
             {/* Top Editorial Masthead */}
-            <div className={cn('relative z-10', isSmall ? 'pl-1.5 pt-0.5 space-y-1.5' : 'pl-3 pt-1 space-y-2')}>
-              <div className="flex items-center justify-between gap-1.5">
+            <div className={cn('relative z-10', isSmall ? 'pl-1.5 pt-0.5 space-y-1' : 'pl-2.5 pt-0.5 space-y-1.5')}>
+              <div className="flex items-center justify-between gap-1">
                 <span
                   className={cn(
-                    'font-semibold uppercase tracking-[0.16em] text-[#EBD9B2] truncate',
-                    isSmall ? 'text-[7px]' : 'text-[8.5px] sm:text-[9px]'
+                    'font-semibold uppercase tracking-[0.15em] text-[#EBD9B2] truncate',
+                    isSmall ? 'text-[6.5px]' : 'text-[7.5px] sm:text-[8px]'
                   )}
                 >
                   {getDocumentTypeLabel(book.document_type)}
@@ -76,7 +76,7 @@ export function BookCover({ book, progressPercent, size = 'md', className }: Boo
                   <span
                     className={cn(
                       'font-medium text-white/70 tabular-nums shrink-0',
-                      isSmall ? 'text-[7.5px]' : 'text-[9px]'
+                      isSmall ? 'text-[7px]' : 'text-[8px]'
                     )}
                   >
                     {book.year}
@@ -86,66 +86,66 @@ export function BookCover({ book, progressPercent, size = 'md', className }: Boo
 
               {/* Ornamental Gold Rule */}
               <div className="flex items-center gap-1.5">
-                <span className={cn('h-px bg-gold/75', isSmall ? 'w-5' : 'w-8')} />
+                <span className={cn('h-px bg-gold/75', isSmall ? 'w-4' : 'w-6')} />
                 <span className="h-1 w-1 rotate-45 bg-gold/80" aria-hidden="true" />
               </div>
 
               {/* Embossed Editorial Serif Title */}
               <p
                 className={cn(
-                  'font-editorial font-semibold leading-[1.18] text-white/95 line-clamp-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]',
+                  'font-editorial font-semibold leading-[1.18] text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]',
                   isLarge
-                    ? 'text-xl sm:text-2xl'
+                    ? 'text-xl sm:text-2xl line-clamp-4'
                     : isSmall
-                      ? 'text-[11px] leading-[1.2]'
-                      : 'text-[13.5px] sm:text-[15.5px]'
+                      ? 'text-[10.5px] leading-[1.2] line-clamp-3'
+                      : 'text-[12px] sm:text-[13.5px] line-clamp-4'
                 )}
               >
                 {book.title}
               </p>
 
               {!isSmall && book.author && (
-                <p className="text-[10px] font-medium text-white/70 line-clamp-1 pt-0.5">
+                <p className="text-[9.5px] font-medium text-white/70 line-clamp-1 pt-0.5">
                   {book.author}
                 </p>
               )}
             </div>
 
             {/* Bottom Legal Seal & Colophon */}
-            <div className={cn('relative z-10', isSmall ? 'pl-1.5 pb-0.5 space-y-1' : 'pl-3 pb-1 space-y-2')}>
-              <div className="flex items-center gap-2">
+            <div className={cn('relative z-10', isSmall ? 'pl-1.5 pb-0.5 space-y-1' : 'pl-2.5 pb-0.5 space-y-1.5')}>
+              <div className="flex items-center gap-1.5">
                 <span
                   className={cn(
                     'rounded-full border border-gold/40 bg-black/15 inline-flex items-center justify-center text-gold/90',
-                    isLarge ? 'h-9 w-9' : isSmall ? 'h-5 w-5' : 'h-7 w-7'
+                    isLarge ? 'h-9 w-9' : isSmall ? 'h-4.5 w-4.5 p-1' : 'h-6 w-6'
                   )}
                   aria-hidden="true"
                 >
                   <Scale
-                    className={cn(isLarge ? 'h-5 w-5' : isSmall ? 'h-3 w-3' : 'h-3.5 w-3.5')}
+                    className={cn(isLarge ? 'h-5 w-5' : isSmall ? 'h-2.5 w-2.5' : 'h-3 w-3')}
                     strokeWidth={1.5}
                   />
                 </span>
                 {!isSmall && (
-                  <span className="text-[8px] uppercase tracking-[0.14em] text-[#EBD9B2]/80 truncate">
+                  <span className="text-[7.5px] uppercase tracking-[0.14em] text-[#EBD9B2]/80 truncate">
                     Edición Jurídica
                   </span>
                 )}
               </div>
 
-              <div className="pt-1.5 border-t border-white/15 flex items-center justify-between gap-2">
+              <div className="pt-1 border-t border-white/15 flex items-center justify-between gap-1.5">
                 <span
                   className={cn(
-                    'uppercase tracking-[0.14em] text-white/70 truncate',
-                    isSmall ? 'text-[6.5px]' : 'text-[8px] sm:text-[8.5px]'
+                    'uppercase tracking-[0.13em] text-white/70 truncate',
+                    isSmall ? 'text-[6px]' : 'text-[7px] sm:text-[7.5px]'
                   )}
                 >
-                  República Dominicana
+                  Rep. Dominicana
                 </span>
                 <span
                   className={cn(
-                    'font-bold uppercase tracking-[0.16em] text-gold shrink-0',
-                    isSmall ? 'text-[6px]' : 'text-[7.5px]'
+                    'font-bold uppercase tracking-[0.15em] text-gold shrink-0',
+                    isSmall ? 'text-[6px]' : 'text-[7px]'
                   )}
                 >
                   MICOLE

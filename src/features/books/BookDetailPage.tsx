@@ -4,18 +4,14 @@ import { m } from 'motion/react';
 import {
   Bookmark,
   BookOpen,
-  Building2,
-  Calendar,
   Check,
-  CheckCircle2,
   ChevronLeft,
+  Download,
   Eye,
   FolderPlus,
   Heart,
   Lock,
   Share2,
-  User,
-  XCircle,
 } from 'lucide-react';
 import {
   useBookQuery,
@@ -30,11 +26,10 @@ import { BookCover } from './BookCover';
 import { BookShelf } from './BookShelf';
 import { QuickPreviewModal } from './QuickPreviewModal';
 import { Button } from '../../components/ui/Button';
-import { DownloadActionButton } from '../../components/ui/DownloadActionButton';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { LexNotFoundMascot } from '../../components/mascot/LexNotFoundMascot';
+import { BookDetailSkeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/feedback/EmptyState';
 import {
   formatFullDate,
   getBookAvailability,
@@ -46,6 +41,7 @@ import {
   DETAIL_ITEM_VARIANTS,
   DETAIL_STAGGER_VARIANTS,
 } from '../../utils/motion';
+import { cn } from '../../utils/cn';
 import type { Book } from '../../types';
 
 export function BookDetailPage() {
@@ -80,47 +76,33 @@ export function BookDetailPage() {
   const [previewTarget, setPreviewTarget] = useState<Book | null>(null);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   const relatedBooks = useMemo(() => {
     if (!book) return [];
     const sameCategory = allBooks.filter((b) => b.id !== book.id && b.category === book.category);
     const others = allBooks.filter((b) => b.id !== book.id && b.category !== book.category);
-    return [...sameCategory, ...others].slice(0, 8);
+    return [...sameCategory, ...others].slice(0, 10);
   }, [allBooks, book]);
 
   if (isLoading) {
-    return (
-      <div className="space-y-8 py-4">
-        <Skeleton className="h-5 w-28" />
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8">
-          <Skeleton className="aspect-[2/3] w-48 md:w-full rounded-book" />
-          <div className="space-y-4">
-            <Skeleton className="h-5 w-36" />
-            <Skeleton className="h-10 w-3/4" />
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-24 w-full max-w-2xl" />
-          </div>
-        </div>
-      </div>
-    );
+    return <BookDetailSkeleton />;
   }
 
   if (!book) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-14 sm:py-16 px-6 rounded-3xl border border-line bg-white shadow-subtle">
-        <LexNotFoundMascot className="mb-3" />
-        <h2 className="font-editorial text-xl sm:text-2xl font-semibold text-navy">
-          Recurso no encontrado
-        </h2>
-        <p className="text-sm text-ink-muted max-w-md mt-1.5 leading-relaxed">
-          El documento que buscas no existe, no está disponible o fue retirado del catálogo.
-        </p>
-        <div className="mt-5">
+      <EmptyState
+        mascot="not-found"
+        title="Recurso no encontrado"
+        description="El documento que buscas no existe, no está disponible o fue retirado del catálogo."
+        action={
           <Link to="/explorar">
-            <Button variant="primary">Volver al catálogo</Button>
+            <Button variant="primary" className="rounded-full">
+              Volver al catálogo
+            </Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
     );
   }
 
@@ -140,25 +122,24 @@ export function BookDetailPage() {
       ? String(book.year)
       : 'No especificado';
 
-  // Extended bibliographic rows (only verified non-empty values)
   const bibliographicItems: Array<{ label: string; value: string }> = [
+    { label: 'Editorial', value: book.publisher || 'No especificada' },
+    { label: 'Año', value: publicationYearLabel },
+    ...(book.pages ? [{ label: 'Extensión', value: `${book.pages} páginas` }] : []),
     { label: 'Categoría', value: book.category },
     ...(subcategoryObj ? [{ label: 'Subcategoría', value: subcategoryObj.name }] : []),
     ...(folderObj ? [{ label: 'Carpeta', value: folderObj.name }] : []),
-    { label: 'Tipo de documento', value: getDocumentTypeLabel(book.document_type) },
     ...(book.subject ? [{ label: 'Materia', value: book.subject }] : []),
-    ...(validityLabel ? [{ label: 'Estado de vigencia', value: validityLabel }] : []),
-    ...(book.country ? [{ label: 'País / Jurisdicción', value: book.country }] : []),
+    ...(book.country ? [{ label: 'Jurisdicción', value: book.country }] : []),
     ...(book.court ? [{ label: 'Tribunal', value: book.court }] : []),
     ...(book.judgment_number ? [{ label: 'N.º de sentencia', value: book.judgment_number }] : []),
-    ...(book.added_at
-      ? [{ label: 'Fecha de incorporación', value: formatFullDate(book.added_at) }]
-      : []),
+    { label: 'Formato', value: book.size_label || formatExt },
     ...(book.isbn ? [{ label: 'ISBN', value: book.isbn }] : []),
-    ...(book.pages ? [{ label: 'Extensión', value: `${book.pages} páginas` }] : []),
-    ...(book.size_label ? [{ label: 'Archivo', value: book.size_label }] : []),
     ...(book.language ? [{ label: 'Idioma', value: book.language }] : []),
     ...(book.source ? [{ label: 'Fuente', value: book.source }] : []),
+    ...(book.added_at
+      ? [{ label: 'Incorporado', value: formatFullDate(book.added_at) }]
+      : []),
   ];
 
   const handleShare = async () => {
@@ -183,6 +164,16 @@ export function BookDetailPage() {
     }
   };
 
+  const handleDirectDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await handleDownloadBook(book);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const handleQuickCreateCollection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCollectionName.trim()) return;
@@ -196,7 +187,8 @@ export function BookDetailPage() {
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10 sm:space-y-12">
+      {/* Quiet Editorial Back Link */}
       <div>
         <button
           type="button"
@@ -210,313 +202,276 @@ export function BookDetailPage() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-navy transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
-          Volver
+          Catálogo
         </button>
       </div>
 
-      {/* Main Editorial Detail Layout */}
-      <section className="grid grid-cols-1 md:grid-cols-[230px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)] gap-8 lg:gap-12 items-start">
-        {/* Vertical Book Cover */}
+      {/* Main Editorial Hero Split */}
+      <section className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)] gap-8 lg:gap-12 items-start">
+        {/* Tactile 3D Vertical Book Cover */}
         <m.div
           variants={DETAIL_COVER_VARIANTS}
           initial="hidden"
           animate="visible"
-          className="w-48 sm:w-56 md:w-full mx-auto md:mx-0 space-y-3"
+          className="w-44 sm:w-52 md:w-full mx-auto md:mx-0 space-y-3"
         >
-          <BookCover book={book} size="lg" progressPercent={progress?.progress_percent} />
+          <div className="group">
+            <BookCover
+              book={book}
+              size="lg"
+              progressPercent={progress?.progress_percent}
+              className="shadow-editorial-cover"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none mx-4 mt-2 h-2.5 rounded-full bg-navy/15 blur-md opacity-85"
+            />
+          </div>
+
           {progress && progress.progress_percent > 0 && (
-            <div className="rounded-xl bg-surface-secondary border border-line px-3.5 py-2.5 text-xs space-y-1.5">
-              <div className="flex items-center justify-between text-navy font-medium">
-                <span>Tu lectura</span>
+            <div className="rounded-2xl bg-white border border-line/85 px-3.5 py-2.5 text-xs space-y-1.5 shadow-subtle">
+              <div className="flex items-center justify-between text-navy font-semibold tabular-nums">
+                <span>Tu progreso</span>
                 <span>{Math.round(progress.progress_percent)}%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-white overflow-hidden">
+              <div className="h-1.5 w-full rounded-full bg-paper-warm overflow-hidden">
                 <div
                   className="h-full bg-gold rounded-full"
                   style={{ width: `${Math.min(100, Math.max(4, progress.progress_percent))}%` }}
                 />
               </div>
-              <p className="text-[11px] text-ink-muted">
-                Última página: {progress.current_page}
+              <p className="text-[11px] text-ink-muted tabular-nums">
+                Página {progress.current_page}
                 {progress.total_pages ? ` de ${progress.total_pages}` : ''}
               </p>
             </div>
           )}
         </m.div>
 
-        {/* Details & Actions */}
+        {/* Editorial Details, Simplified Action Bar & Hairline Metadata */}
         <m.div
           variants={DETAIL_STAGGER_VARIANTS}
           initial="hidden"
           animate="visible"
           className="min-w-0 space-y-6"
         >
+          {/* Header Block */}
           <m.div variants={DETAIL_ITEM_VARIANTS} className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Link to={`/explorar?categoria=${encodeURIComponent(book.category)}`}>
-                <Badge variant="gold" className="hover:bg-gold/20 transition-colors">
-                  {book.category}
-                </Badge>
-              </Link>
-              <Badge variant="outline">{getDocumentTypeLabel(book.document_type)}</Badge>
-              {validityLabel && (
-                <Badge variant={book.validity_status === 'vigente' ? 'gold' : 'neutral'}>
-                  {validityLabel}
-                </Badge>
-              )}
-              {book.year && <Badge variant="neutral">{book.year}</Badge>}
-              <Badge variant="neutral">{formatExt}</Badge>
-              <span
-                className={
-                  availability.status === 'available'
-                    ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800'
-                    : availability.status === 'login_required'
-                      ? 'inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800'
-                      : 'inline-flex items-center gap-1.5 rounded-full bg-surface-secondary border border-line px-2.5 py-0.5 text-[11px] font-semibold text-ink-muted'
-                }
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-dark">
+              <Link
+                to={`/explorar?categoria=${encodeURIComponent(book.category)}`}
+                className="hover:text-navy transition-colors"
               >
-                <span
-                  className={
-                    availability.status === 'available'
-                      ? 'h-1.5 w-1.5 rounded-full bg-emerald-500'
-                      : availability.status === 'login_required'
-                        ? 'h-1.5 w-1.5 rounded-full bg-amber-500'
-                        : 'h-1.5 w-1.5 rounded-full bg-ink-subtle'
-                  }
-                />
-                {availability.shortLabel}
-              </span>
+                {book.category}
+              </Link>
+              <span aria-hidden="true" className="text-line-strong">·</span>
+              <span>{getDocumentTypeLabel(book.document_type)}</span>
+              {book.year && (
+                <>
+                  <span aria-hidden="true" className="text-line-strong">·</span>
+                  <span className="tabular-nums text-ink-subtle font-medium">{book.year}</span>
+                </>
+              )}
             </div>
 
-            <h1 className="font-editorial text-3xl sm:text-4xl font-semibold text-navy leading-[1.15] tracking-tight">
+            <h1 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] font-semibold text-navy leading-[1.12] tracking-tight">
               {book.title}
             </h1>
+
             <p className="text-base text-ink-muted font-medium">
               {book.author}
               {book.publisher ? ` · ${book.publisher}` : ''}
             </p>
+
+            {/* Single Calm Status Indicator */}
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {availability.status === 'available' ? (
+                <Badge variant="forest" className="gap-1.5 px-3 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#C1A15C]" aria-hidden="true" />
+                  {validityLabel ? `${validityLabel} · ` : ''}
+                  {availability.shortLabel}
+                </Badge>
+              ) : availability.status === 'login_required' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-0.5 text-[11px] font-semibold text-amber-800">
+                  <Lock className="h-3 w-3" />
+                  {availability.shortLabel}
+                </span>
+              ) : (
+                <Badge variant="outline">{availability.shortLabel}</Badge>
+              )}
+
+              {book.validity_status && book.validity_status !== 'vigente' && validityLabel && (
+                <Badge variant="outline">{validityLabel}</Badge>
+              )}
+            </div>
           </m.div>
 
-          {/* Primary Actions */}
-          <m.div variants={DETAIL_ITEM_VARIANTS} className="flex flex-wrap items-center gap-2.5 pt-1">
+          {/* Simplified Single-Row Apple Books Action Bar */}
+          <m.div
+            variants={DETAIL_ITEM_VARIANTS}
+            className="flex flex-wrap items-center gap-2.5 pt-1"
+          >
             {availability.canRead && (
               <Link to={`/leer/${book.id}`}>
-                <Button variant="primary" size="lg">
-                  <BookOpen className="h-4 w-4" />
+                <Button variant="primary" size="lg" className="rounded-full px-6">
+                  <BookOpen className="h-4 w-4 text-gold" />
                   {progress && progress.current_page > 1 ? 'Continuar lectura' : 'Leer ahora'}
                 </Button>
               </Link>
             )}
+
             {availability.canRead && (
-              <Button variant="secondary" size="lg" onClick={() => setPreviewTarget(book)}>
-                <Eye className="h-4 w-4" />
+              <Button
+                variant="secondary"
+                size="lg"
+                className="rounded-full px-5"
+                onClick={() => setPreviewTarget(book)}
+              >
+                <Eye className="h-4 w-4 text-ink-muted" />
                 Vista previa
               </Button>
             )}
-            {availability.canDownload && (
-              <DownloadActionButton
-                variant="secondary"
-                size="lg"
-                idleLabel={`Descargar ${formatExt}`}
-                onDownload={() => handleDownloadBook(book)}
-              />
-            )}
+
             {availability.status === 'login_required' && (
               <Link to={`/iniciar-sesion?redirect=${encodeURIComponent(`/libro/${book.id}`)}`}>
-                <Button variant="primary" size="lg">
-                  <Lock className="h-4 w-4" />
+                <Button variant="primary" size="lg" className="rounded-full px-6">
+                  <Lock className="h-4 w-4 text-gold" />
                   Iniciar sesión para acceder
                 </Button>
               </Link>
             )}
-          </m.div>
 
-          {/* Secondary Personal Actions */}
-          <m.div variants={DETAIL_ITEM_VARIANTS} className="flex flex-wrap items-center gap-2 pb-2 border-b border-line">
-            <Button
-              variant={inLib ? 'gold' : 'ghost'}
-              size="sm"
-              className={!inLib ? 'border border-line' : ''}
-              onClick={() => handleToggleLibrary(book.id)}
-            >
-              <Bookmark className="h-4 w-4" fill={inLib ? 'currentColor' : 'none'} />
-              {inLib ? 'En mi biblioteca' : 'Añadir a mi biblioteca'}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className="border border-line"
-              onClick={() => handleToggleFavorite(book.id)}
-            >
-              <Heart
-                className="h-4 w-4"
-                fill={fav ? '#DC2626' : 'none'}
-                color={fav ? '#DC2626' : 'currentColor'}
-              />
-              {fav ? 'Favorito' : 'Añadir a favoritos'}
-            </Button>
-
-            {isAuthenticated && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="border border-line"
-                onClick={() => setCollectionModalOpen(true)}
+            {/* Compact Circular Secondary Actions */}
+            <div className="flex items-center gap-2 sm:pl-1">
+              <button
+                type="button"
+                onClick={() => handleToggleLibrary(book.id)}
+                aria-label={inLib ? 'Quitar de mi biblioteca' : 'Añadir a mi biblioteca'}
+                aria-pressed={inLib}
+                title={inLib ? 'En mi biblioteca' : 'Guardar en biblioteca'}
+                className={cn(
+                  'h-10 w-10 rounded-full border inline-flex items-center justify-center transition-all',
+                  inLib
+                    ? 'border-navy bg-navy text-gold shadow-subtle'
+                    : 'border-line-strong bg-white text-navy hover:bg-paper-warm'
+                )}
               >
-                <FolderPlus className="h-4 w-4" />
-                Colección
-              </Button>
-            )}
+                <Bookmark className="h-4 w-4" fill={inLib ? 'currentColor' : 'none'} />
+              </button>
 
-            <Button variant="ghost" size="sm" className="border border-line" onClick={handleShare}>
-              <Share2 className="h-4 w-4" />
-              Compartir
-            </Button>
+              <button
+                type="button"
+                onClick={() => handleToggleFavorite(book.id)}
+                aria-label={fav ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                aria-pressed={fav}
+                title={fav ? 'Favorito' : 'Añadir a favoritos'}
+                className={cn(
+                  'h-10 w-10 rounded-full border inline-flex items-center justify-center transition-all',
+                  fav
+                    ? 'border-red-200 bg-red-50 text-red-600'
+                    : 'border-line-strong bg-white text-navy hover:bg-paper-warm'
+                )}
+              >
+                <Heart className="h-4 w-4" fill={fav ? 'currentColor' : 'none'} />
+              </button>
+
+              {availability.canDownload && (
+                <button
+                  type="button"
+                  disabled={downloading}
+                  onClick={() => void handleDirectDownload()}
+                  aria-label={`Descargar ${formatExt}`}
+                  title={`Descargar ${formatExt}`}
+                  className="h-10 w-10 rounded-full border border-line-strong bg-white text-navy hover:bg-paper-warm disabled:opacity-50 inline-flex items-center justify-center transition-all"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+              )}
+
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => setCollectionModalOpen(true)}
+                  aria-label="Añadir a colección"
+                  title="Guardar en colección"
+                  className="h-10 w-10 rounded-full border border-line-strong bg-white text-navy hover:bg-paper-warm inline-flex items-center justify-center transition-all"
+                >
+                  <FolderPlus className="h-4 w-4" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Compartir enlace del recurso"
+                title="Compartir"
+                className="h-10 w-10 rounded-full border border-line-strong bg-white text-navy hover:bg-paper-warm inline-flex items-center justify-center transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+            </div>
           </m.div>
 
-          {/* Structured Book Detail Sheet: Author, Publisher, Year, Availability, Description */}
+          {/* Hairline-Divided Editorial Synopsis + Clean Borderless Metadata Grid */}
           <m.div
             variants={DETAIL_ITEM_VARIANTS}
-            className="rounded-2xl border border-line bg-white p-5 sm:p-6 shadow-subtle space-y-5"
+            className="pt-6 border-t border-line grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-8 lg:gap-10"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-line/80">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-dark">
-                Ficha detallada del libro
+            {/* Synopsis */}
+            <div className="space-y-2.5">
+              <h2 className="font-editorial text-lg font-semibold text-navy">
+                Sinopsis editorial
               </h2>
-              <span className="text-xs text-ink-subtle font-medium">
-                {getDocumentTypeLabel(book.document_type)} · {formatExt}
-              </span>
-            </div>
-
-            {/* Core 4-Card Strip: Autor, Editorial, Año, Disponibilidad */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="flex items-start gap-3 rounded-xl bg-surface-secondary/55 border border-line/70 px-3.5 py-3">
-                <span className="h-8 w-8 rounded-lg bg-white border border-line text-gold-dark inline-flex items-center justify-center shrink-0">
-                  <User className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
-                    Autor
-                  </p>
-                  <p className="text-sm font-semibold text-navy mt-0.5 break-words">
-                    {book.author || 'No especificado'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl bg-surface-secondary/55 border border-line/70 px-3.5 py-3">
-                <span className="h-8 w-8 rounded-lg bg-white border border-line text-gold-dark inline-flex items-center justify-center shrink-0">
-                  <Building2 className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
-                    Editorial
-                  </p>
-                  <p className="text-sm font-semibold text-navy mt-0.5 break-words">
-                    {book.publisher || 'No especificada'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl bg-surface-secondary/55 border border-line/70 px-3.5 py-3">
-                <span className="h-8 w-8 rounded-lg bg-white border border-line text-gold-dark inline-flex items-center justify-center shrink-0">
-                  <Calendar className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
-                    Año de publicación
-                  </p>
-                  <p className="text-sm font-semibold text-navy mt-0.5">
-                    {publicationYearLabel}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={
-                  availability.status === 'available'
-                    ? 'flex items-start gap-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 px-3.5 py-3'
-                    : availability.status === 'login_required'
-                      ? 'flex items-start gap-3 rounded-xl bg-amber-50/75 border border-amber-200/80 px-3.5 py-3'
-                      : 'flex items-start gap-3 rounded-xl bg-surface-secondary/75 border border-line px-3.5 py-3'
-                }
-              >
-                <span className="h-8 w-8 rounded-lg bg-white border border-current/10 inline-flex items-center justify-center shrink-0">
-                  {availability.status === 'available' ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  ) : availability.status === 'login_required' ? (
-                    <Lock className="h-4 w-4 text-amber-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-ink-subtle" />
-                  )}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-subtle">
-                    Disponibilidad
-                  </p>
-                  <p className="text-sm font-semibold text-navy mt-0.5">
-                    {availability.label}
-                  </p>
-                  <p className="text-xs text-ink-muted mt-0.5 leading-snug">
-                    {availability.detail}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5 pt-1">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">
-                Descripción
-              </h3>
-              <p className="text-sm sm:text-[15px] text-ink leading-relaxed whitespace-pre-line">
+              <p className="text-sm sm:text-[15px] text-ink leading-[1.7] max-w-[65ch] whitespace-pre-line">
                 {book.description?.trim()
                   ? book.description
-                  : 'Este recurso no cuenta aún con una descripción editorial detallada.'}
+                  : 'Este recurso jurídico no cuenta aún con una sinopsis editorial detallada.'}
               </p>
+              <p className="text-xs text-ink-muted pt-1">{availability.detail}</p>
+
+              {/* Keywords */}
+              {book.keywords && book.keywords.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-3">
+                  {book.keywords.map((kw) => (
+                    <Link
+                      key={kw}
+                      to={`/explorar?q=${encodeURIComponent(kw)}`}
+                      className="text-xs px-3 py-1 rounded-full bg-white border border-line text-ink-muted hover:text-navy hover:border-navy/30 transition-colors"
+                    >
+                      {kw}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Clean Hairline Bibliographic Grid (No gray boxes) */}
+            <div className="space-y-3 lg:border-l lg:border-line/80 lg:pl-8">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-subtle">
+                Ficha bibliográfica
+              </h2>
+              <dl className="grid grid-cols-2 gap-x-5 gap-y-3.5">
+                {bibliographicItems.map((item) => (
+                  <div key={item.label} className="space-y-0.5 min-w-0">
+                    <dt className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">
+                      {item.label}
+                    </dt>
+                    <dd className="text-[13.5px] font-medium text-navy break-words leading-snug">
+                      {item.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           </m.div>
-
-          {/* Extended Bibliographic Metadata */}
-          <m.div variants={DETAIL_ITEM_VARIANTS} className="space-y-3 pt-1">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-ink-subtle">
-              Datos bibliográficos adicionales
-            </h2>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3.5 rounded-2xl border border-line bg-surface-secondary/50 p-5">
-              {bibliographicItems.map((item) => (
-                <div key={item.label} className="space-y-0.5">
-                  <dt className="text-[11px] font-medium uppercase tracking-wider text-ink-subtle">
-                    {item.label}
-                  </dt>
-                  <dd className="text-sm font-medium text-navy break-words">{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </m.div>
-
-          {/* Keywords */}
-          {book.keywords && book.keywords.length > 0 && (
-            <m.div variants={DETAIL_ITEM_VARIANTS} className="flex flex-wrap items-center gap-2 pt-1">
-              {book.keywords.map((kw) => (
-                <Link
-                  key={kw}
-                  to={`/explorar?q=${encodeURIComponent(kw)}`}
-                  className="text-xs px-3 py-1 rounded-full bg-surface-secondary text-ink-muted hover:text-navy hover:bg-surface-tertiary transition-colors"
-                >
-                  {kw}
-                </Link>
-              ))}
-            </m.div>
-          )}
         </m.div>
       </section>
 
-      {/* Related Resources */}
-      <div className="pt-4 border-t border-line">
+      {/* Related Resources Shelf */}
+      <div className="pt-2">
         <BookShelf
-          title="Recursos relacionados"
-          subtitle="Otros títulos afines para ampliar tu estudio."
+          title="Títulos relacionados"
+          subtitle="Otras obras jurídicas afines para ampliar tu investigación."
           seeAllTo={`/explorar?categoria=${encodeURIComponent(book.category)}`}
           books={relatedBooks}
           isInLibrary={isInLibrary}
@@ -563,7 +518,7 @@ export function BookDetailPage() {
                           inCollection: included,
                         })
                       }
-                      className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-line hover:bg-surface-secondary text-left transition-colors"
+                      className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-line hover:bg-paper-warm text-left transition-colors"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-navy truncate">{col.name}</p>
@@ -574,7 +529,7 @@ export function BookDetailPage() {
                       <span
                         className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
                           included
-                            ? 'bg-navy border-navy text-white'
+                            ? 'bg-forest border-forest text-white'
                             : 'border-line-strong bg-white'
                         }`}
                       >
@@ -598,7 +553,7 @@ export function BookDetailPage() {
               onChange={(e) => setNewCollectionName(e.target.value)}
               placeholder="Ej. Exámenes Procesal Penal"
               aria-label="Nombre de nueva colección"
-              className="flex-1 min-w-0 rounded-lg border border-line-strong px-3 py-2 text-sm focus:border-navy focus:outline-none"
+              className="flex-1 min-w-0 rounded-xl border border-line-strong px-3 py-2 text-sm focus:border-navy focus:outline-none"
             />
             <Button type="submit" size="sm" disabled={!newCollectionName.trim()}>
               Crear
