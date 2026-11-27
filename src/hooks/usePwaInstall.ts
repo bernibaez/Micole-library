@@ -33,47 +33,60 @@ function readIsDismissed(): boolean {
   }
 }
 
+// Module-level shared store so all components receive the captured install event
+let sharedPrompt: BeforeInstallPromptEvent | null = null;
+let sharedInstalled = isRunningStandalone();
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
+  listeners.forEach((fn) => fn());
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    e.preventDefault();
+    sharedPrompt = e as BeforeInstallPromptEvent;
+    notifyListeners();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    sharedInstalled = true;
+    sharedPrompt = null;
+    notifyListeners();
+  });
+}
+
 export function usePwaInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState<boolean>(isRunningStandalone);
+  const [, setTick] = useState(0);
   const [dismissed, setDismissed] = useState<boolean>(readIsDismissed);
   const [installing, setInstalling] = useState(false);
 
   const isIosSafari = detectIsIosSafari();
 
   useEffect(() => {
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-    const onAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    window.addEventListener('appinstalled', onAppInstalled);
+    const onChange = () => setTick((n) => n + 1);
+    listeners.add(onChange);
     return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      window.removeEventListener('appinstalled', onAppInstalled);
+      listeners.delete(onChange);
     };
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!deferredPrompt) return false;
+    if (!sharedPrompt) return false;
     setInstalling(true);
     try {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
+      await sharedPrompt.prompt();
+      const choice = await sharedPrompt.userChoice;
       if (choice.outcome === 'accepted') {
-        setIsInstalled(true);
+        sharedInstalled = true;
       }
-      setDeferredPrompt(null);
+      sharedPrompt = null;
+      notifyListeners();
       return choice.outcome === 'accepted';
     } finally {
       setInstalling(false);
     }
-  }, [deferredPrompt]);
+  }, []);
 
   const dismissBanner = useCallback(() => {
     setDismissed(true);
@@ -84,7 +97,8 @@ export function usePwaInstall() {
     }
   }, []);
 
-  const canPromptNative = Boolean(deferredPrompt && !isInstalled);
+  const isInstalled = sharedInstalled;
+  const canPromptNative = Boolean(sharedPrompt && !isInstalled);
   const showBanner = !isInstalled && !dismissed && (canPromptNative || isIosSafari);
 
   return {

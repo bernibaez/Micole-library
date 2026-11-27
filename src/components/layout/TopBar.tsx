@@ -4,12 +4,15 @@ import { AnimatePresence, m, useMotionValueEvent, useScroll } from 'motion/react
 import {
   Bookmark,
   ChevronDown,
+  Download,
   LogIn,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Share,
   ShieldCheck,
+  Smartphone,
   User,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
@@ -17,7 +20,9 @@ import { GlobalSearch } from '../../features/catalog/GlobalSearch';
 import { NotificationsPopover } from '../../features/notifications/NotificationsPopover';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { useAuth } from '../../features/auth/AuthContext';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 import { cn } from '../../utils/cn';
 import { EASE_EDITORIAL, TRANSITION_MICRO } from '../../utils/motion';
 
@@ -35,7 +40,9 @@ export function TopBar({
   onToggleSidebar,
 }: TopBarProps) {
   const { isAuthenticated, isAdmin, profile, user, isDemoSession, signOut } = useAuth();
+  const { isInstalled, isIosSafari, canPromptNative, installing, promptInstall } = usePwaInstall();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -202,6 +209,24 @@ export function TopBar({
                       Panel administrativo
                     </Link>
                   )}
+                  {!isInstalled && (
+                    <button
+                      type="button"
+                      disabled={installing}
+                      onClick={async () => {
+                        setMenuOpen(false);
+                        if (canPromptNative) {
+                          await promptInstall();
+                        } else {
+                          setInstallGuideOpen(true);
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-navy hover:bg-gold-soft/60 transition-colors text-left"
+                    >
+                      <Smartphone className="h-4 w-4 text-gold-dark shrink-0" />
+                      <span>{installing ? 'Instalando app…' : 'Descargar como app'}</span>
+                    </button>
+                  )}
                   <div className="border-t border-line my-1" />
                   <button
                     type="button"
@@ -241,6 +266,55 @@ export function TopBar({
 
         <NotificationsPopover />
       </div>
+
+      {/* Install App Instructions Modal (for iOS Safari / browsers without native prompt) */}
+      <Modal
+        open={installGuideOpen}
+        onClose={() => setInstallGuideOpen(false)}
+        size="sm"
+        title="Descargar como app"
+        description="Instala MICOLE LIBRARY en tu dispositivo para acceder a pantalla completa."
+      >
+        <div className="p-6 space-y-4">
+          {isIosSafari ? (
+            <ol className="space-y-2.5 text-sm text-ink list-decimal list-inside leading-relaxed">
+              <li>
+                Pulsa el botón <Share className="inline h-4 w-4 mx-0.5 text-gold-dark" />{' '}
+                <strong className="text-navy">Compartir</strong> en la barra inferior de Safari.
+              </li>
+              <li>
+                Desplázate y selecciona{' '}
+                <strong className="text-navy">«Añadir a pantalla de inicio»</strong>.
+              </li>
+              <li>
+                Pulsa <strong className="text-navy">Añadir</strong> para crear el acceso directo.
+              </li>
+            </ol>
+          ) : (
+            <ol className="space-y-2.5 text-sm text-ink list-decimal list-inside leading-relaxed">
+              <li>
+                Abre el menú de tu navegador (<strong className="text-navy">⋮</strong> o icono{' '}
+                <Download className="inline h-3.5 w-3.5 mx-0.5 text-gold-dark" /> en la barra de
+                direcciones).
+              </li>
+              <li>
+                Selecciona <strong className="text-navy">«Instalar MICOLE LIBRARY»</strong> o{' '}
+                <strong className="text-navy">«Añadir a la pantalla de inicio»</strong>.
+              </li>
+            </ol>
+          )}
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="primary"
+              size="sm"
+              className="rounded-full px-5"
+              onClick={() => setInstallGuideOpen(false)}
+            >
+              Entendido
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </m.header>
   );
 }
