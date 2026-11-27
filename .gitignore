@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables (nunca subir credenciales al repositorio)
+.env
+.env.local
+.env.*.local
+
+# Supabase CLI temp files
+supabase/.temp/
+
+# Editor / OS
+.DS_Store
+Thumbs.db

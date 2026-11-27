@@ -1,0 +1,19 @@
+# Configuración de Edge Functions para Supabase CLI
+# Todas las funciones validan la autenticación (JWT vía auth.getUser) y permisos
+# (role = 'admin' o visibilidad del documento) directamente en el backend Deno,
+# evitando rechazos del gateway legado con tokens ES256 y asegurando cabeceras CORS.
+
+[functions.drive-file-proxy]
+verify_jwt = false
+
+[functions.google-drive-oauth]
+verify_jwt = false
+
+[functions.google-drive-picker-token]
+verify_jwt = false
+
+[functions.google-drive-import]
+verify_jwt = false
+
+[functions.google-drive-sync]
+verify_jwt = false

@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --lex-navy: #101D35;
+    --lex-navy-secondary: #1C3152;
+    --lex-gold: #C5A15B;
+    --lex-white: #FFFFFF;
+    --lex-surface: #F4F6F9;
+    --lex-sand: #EFECE3;
+    --lex-sand-deep: #E0DAC7;
+    --lex-ink: #343B49;
+    --lex-line: #E6E9EF;
+  }
+
+  html {
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--lex-ink);
+    background-color: var(--lex-white);
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    overflow-x: clip;
+  }
+
+  :focus-visible {
+    outline: 2px solid #C5A15B;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* React-PDF text selection and annotation layer polish */
+.react-pdf__Page__textContent {
+  user-select: text !important;
+}
+
+.react-pdf__Page__textContent span::selection {
+  background: rgba(197, 161, 91, 0.35);
+}
+
+.lex-pdf-sepia .react-pdf__Page__canvas {
+  filter: sepia(0.28) contrast(0.95) brightness(0.97);
+}
+
+.lex-pdf-dark-page .react-pdf__Page__canvas {
+  filter: invert(0.88) hue-rotate(180deg) contrast(0.95);
+}
+
+/* LexMascot GPU-accelerated CSS sprite animation (17 frames: 0..15 wave + 16 rest) */
+@keyframes lex-mascot-wave {
+  from {
+    transform: translate3d(0%, 0, 0);
+  }
+  to {
+    transform: translate3d(-94.117647%, 0, 0);
+  }
+}
+
+.lex-mascot-sprite-play {
+  animation: lex-mascot-wave 2.24s steps(16, end) 1 forwards;
+  will-change: transform;
+}
+
+/* Tactile 3D Hardcover Book Polish */
+.lex-book-3d {
+  transform-style: preserve-3d;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .lex-book-3d {
+  transform: perspective(900px) rotateY(-6deg) translateY(-3px);
+}
+
+.lex-book-linen {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 0),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.22) 100%);
+  background-size: 6px 6px, 100% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .lex-book-3d {
+    transform: none;
+  }
+  .lex-mascot-sprite-play {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
