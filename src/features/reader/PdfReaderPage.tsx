@@ -39,7 +39,14 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { QrShareModal } from '../../components/ui/QrShareModal';
+import { CitationModal } from '../../components/ui/CitationModal';
 import { EmptyState } from '../../components/feedback/EmptyState';
+import { useToast } from '../../components/feedback/ToastProvider';
+import {
+  buildStudyNotesMarkdown,
+  downloadStudyNotesMarkdown,
+  printStudyNotesSheet,
+} from '../../utils/citations';
 import { cn } from '../../utils/cn';
 import { getDocumentTypeLabel, isPdfDocument } from '../../utils/format';
 import type { ReaderFitMode, ReaderTheme } from '../../types';
@@ -58,6 +65,7 @@ export function PdfReaderPage() {
   const initialRequestedPage =
     Number.isFinite(requestedPageParam) && requestedPageParam > 0 ? requestedPageParam : null;
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const { notify } = useToast();
   const { data: book, isLoading: loadingBook } = useBookQuery(id);
   const {
     getProgress,
@@ -97,6 +105,7 @@ export function PdfReaderPage() {
   }>({ term: '', results: [], loading: false });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [qrOpen, setQrOpen] = useState<boolean>(false);
+  const [citationOpen, setCitationOpen] = useState<boolean>(false);
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({
     width: 820,
@@ -740,6 +749,7 @@ export function PdfReaderPage() {
             }
           }}
           onOpenQr={() => setQrOpen(true)}
+          onOpenCitation={() => setCitationOpen(true)}
         />
       )}
 
@@ -804,6 +814,23 @@ export function PdfReaderPage() {
             onSaveBookmarkNote={(pageNum, label, note) =>
               handleSaveBookmarkNote(book.id, pageNum, label, note)
             }
+            onExportNotesPrint={() => {
+              const ok = printStudyNotesSheet(book, bookmarks);
+              if (!ok) {
+                notify('Permite ventanas emergentes para imprimir o guardar tus apuntes en PDF.', 'error');
+              }
+            }}
+            onExportNotesMarkdown={() => {
+              downloadStudyNotesMarkdown(book, bookmarks);
+              notify('Apuntes descargados en formato Markdown (.md)');
+            }}
+            onCopyNotes={() => {
+              const text = buildStudyNotesMarkdown(book, bookmarks);
+              void navigator.clipboard
+                .writeText(text)
+                .then(() => notify('Apuntes copiados al portapapeles'))
+                .catch(() => notify('No se pudieron copiar los apuntes.', 'error'));
+            }}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             searchResults={searchResults}
@@ -865,6 +892,14 @@ export function PdfReaderPage() {
             </div>
           )}
         </div>
+
+        {/* Legal & APA 7 Citation Modal for Current Page */}
+        <CitationModal
+          open={citationOpen}
+          onClose={() => setCitationOpen(false)}
+          book={book}
+          initialPage={currentPage}
+        />
 
         {/* QR Share Modal (continue exact page or audiobook on mobile) */}
         <QrShareModal

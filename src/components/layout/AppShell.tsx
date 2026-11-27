@@ -3,12 +3,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
+import { PwaInstallBanner } from './PwaInstallBanner';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 import { cn } from '../../utils/cn';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 && window.innerWidth < 1140 : false
   );
+  const { canPromptNative, promptInstall } = usePwaInstall();
   const { pathname } = useLocation();
   const isHome = pathname === '/';
   const isCatalog = pathname === '/explorar' || pathname === '/biblioteca';
@@ -59,11 +62,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link to="/acerca" className="hover:text-navy transition-colors">
                 Acerca de
               </Link>
+              {canPromptNative && (
+                <button
+                  type="button"
+                  onClick={() => void promptInstall()}
+                  className="font-semibold text-gold-dark hover:text-navy transition-colors"
+                >
+                  Instalar app
+                </button>
+              )}
             </div>
           </div>
         </footer>
       </div>
 
+      <PwaInstallBanner />
       <MobileNav />
     </div>
   );

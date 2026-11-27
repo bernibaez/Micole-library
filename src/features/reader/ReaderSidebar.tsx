@@ -1,6 +1,20 @@
 import { useState } from 'react';
 import { Page } from 'react-pdf';
-import { Bookmark, Check, FileText, ListTree, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import {
+  Bookmark,
+  Check,
+  Copy,
+  Download,
+  FileText,
+  ListTree,
+  Loader2,
+  Pencil,
+  Plus,
+  Printer,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import type { BookmarkItem, ReaderTheme } from '../../types';
 import { cn } from '../../utils/cn';
 
@@ -30,6 +44,9 @@ interface ReaderSidebarProps {
   bookmarks: BookmarkItem[];
   onRemoveBookmark: (pageNumber: number) => void;
   onSaveBookmarkNote: (pageNumber: number, label: string, note: string) => Promise<boolean> | boolean;
+  onExportNotesPrint?: () => void;
+  onExportNotesMarkdown?: () => void;
+  onCopyNotes?: () => void;
   searchQuery: string;
   onSearchQueryChange: (q: string) => void;
   searchResults: PdfSearchMatch[];
@@ -51,6 +68,9 @@ export function ReaderSidebar({
   bookmarks,
   onRemoveBookmark,
   onSaveBookmarkNote,
+  onExportNotesPrint,
+  onExportNotesMarkdown,
+  onCopyNotes,
   searchQuery,
   onSearchQueryChange,
   searchResults,
@@ -349,6 +369,56 @@ export function ReaderSidebar({
                   </div>
                 </form>
               )}
+
+              {/* Export Notes Bar */}
+              {bookmarks.length > 0 &&
+                (onExportNotesPrint || onExportNotesMarkdown || onCopyNotes) && (
+                  <div
+                    className={cn(
+                      'rounded-xl border px-2.5 py-2 flex items-center justify-between gap-1.5',
+                      cardClass
+                    )}
+                  >
+                    <span className={cn('text-[10.5px] font-semibold uppercase tracking-wider', mutedText)}>
+                      Exportar ({bookmarks.length})
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {onExportNotesPrint && (
+                        <button
+                          type="button"
+                          onClick={onExportNotesPrint}
+                          title="Imprimir o guardar apuntes como PDF"
+                          className="h-7 px-2 rounded-lg text-[11px] font-medium hover:bg-current/10 inline-flex items-center gap-1 transition-colors"
+                        >
+                          <Printer className="h-3 w-3 text-gold-dark dark:text-gold" />
+                          PDF
+                        </button>
+                      )}
+                      {onExportNotesMarkdown && (
+                        <button
+                          type="button"
+                          onClick={onExportNotesMarkdown}
+                          title="Descargar apuntes en formato Markdown (.md)"
+                          className="h-7 px-2 rounded-lg text-[11px] font-medium hover:bg-current/10 inline-flex items-center gap-1 transition-colors"
+                        >
+                          <Download className="h-3 w-3 opacity-75" />
+                          .md
+                        </button>
+                      )}
+                      {onCopyNotes && (
+                        <button
+                          type="button"
+                          onClick={onCopyNotes}
+                          title="Copiar todos los apuntes al portapapeles"
+                          aria-label="Copiar apuntes"
+                          className="h-7 w-7 rounded-lg hover:bg-current/10 inline-flex items-center justify-center transition-colors"
+                        >
+                          <Copy className="h-3 w-3 opacity-75" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               {/* Saved Bookmarks & Legal Notes */}
               {bookmarks.length === 0 ? (

@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   PanelLeft,
   QrCode,
+  Quote,
   RotateCw,
   Search,
   StretchHorizontal,
@@ -53,6 +54,7 @@ interface ReaderToolbarProps {
   audioPlaying?: boolean;
   onToggleAudio?: () => void;
   onOpenQr?: () => void;
+  onOpenCitation?: () => void;
 }
 
 export function ReaderToolbar({
@@ -82,6 +84,7 @@ export function ReaderToolbar({
   audioPlaying = false,
   onToggleAudio,
   onOpenQr,
+  onOpenCitation,
 }: ReaderToolbarProps) {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -460,6 +463,20 @@ export function ReaderToolbar({
                     )}
                     {isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                   </button>
+
+                  {onOpenCitation && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        onOpenCitation();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-current/5 text-left"
+                    >
+                      <Quote className="h-4 w-4 text-gold-dark dark:text-gold" />
+                      Citar página actual
+                    </button>
+                  )}
 
                   {onOpenQr && (
                     <button

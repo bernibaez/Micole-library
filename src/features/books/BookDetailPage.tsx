@@ -13,6 +13,7 @@ import {
   Heart,
   Lock,
   QrCode,
+  Quote,
   Share2,
 } from 'lucide-react';
 import {
@@ -31,6 +32,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { QrShareModal } from '../../components/ui/QrShareModal';
+import { CitationModal } from '../../components/ui/CitationModal';
 import { BookDetailSkeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/feedback/EmptyState';
 import {
@@ -79,6 +81,7 @@ export function BookDetailPage() {
   const [previewTarget, setPreviewTarget] = useState<Book | null>(null);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [citationModalOpen, setCitationModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [downloading, setDownloading] = useState(false);
 
@@ -432,6 +435,16 @@ export function BookDetailPage() {
               >
                 <QrCode className="h-4 w-4" />
               </button>
+
+              <button
+                type="button"
+                onClick={() => setCitationModalOpen(true)}
+                aria-label="Generar cita bibliográfica"
+                title="Citar documento (APA / Jurídica)"
+                className="h-10 w-10 rounded-full border border-line-strong bg-white text-navy hover:bg-paper-warm inline-flex items-center justify-center transition-all"
+              >
+                <Quote className="h-4 w-4" />
+              </button>
             </div>
           </m.div>
 
@@ -550,6 +563,14 @@ export function BookDetailPage() {
               ]
             : []),
         ]}
+      />
+
+      {/* Legal & APA 7 Citation Modal */}
+      <CitationModal
+        open={citationModalOpen}
+        onClose={() => setCitationModalOpen(false)}
+        book={book}
+        initialPage={progress?.current_page && progress.current_page > 1 ? progress.current_page : null}
       />
 
       {/* Add to Collection Modal */}
