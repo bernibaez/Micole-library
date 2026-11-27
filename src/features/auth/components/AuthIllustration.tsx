@@ -6,123 +6,76 @@ import { AuthBrand } from './AuthBrand';
 function AmbientBookshelf() {
   const shelves = [
     [
-      { w: 'w-3', h: 'h-14', bg: 'bg-[#2C4062]' },
-      { w: 'w-2.5', h: 'h-12', bg: 'bg-[#4E3832]' },
-      { w: 'w-3.5', h: 'h-15', bg: 'bg-[#23334F]' },
-      { w: 'w-2.5', h: 'h-13', bg: 'bg-[#7A6238]' },
-      { w: 'w-3', h: 'h-14', bg: 'bg-[#2A3D5C]' },
-      { w: 'w-2', h: 'h-11', bg: 'bg-[#3D4B63]' },
-      { w: 'w-3', h: 'h-14', bg: 'bg-[#543D37]' },
+      { w: 'w-3.5', h: 'h-14', bg: 'bg-[#2B4063]' },
+      { w: 'w-2.5', h: 'h-12', bg: 'bg-[#5A3E36]' },
+      { w: 'w-4', h: 'h-16', bg: 'bg-[#223350]' },
+      { w: 'w-2.5', h: 'h-13', bg: 'bg-[#8A6E3E]' },
+      { w: 'w-3', h: 'h-15', bg: 'bg-[#2C4061]' },
+      { w: 'w-2.5', h: 'h-11', bg: 'bg-[#3D4C66]' },
+      { w: 'w-3.5', h: 'h-14', bg: 'bg-[#5E433B]' },
     ],
     [
-      { w: 'w-3.5', h: 'h-14', bg: 'bg-[#253654]' },
+      { w: 'w-3.5', h: 'h-15', bg: 'bg-[#243756]' },
+      { w: 'w-2.5', h: 'h-13', bg: 'bg-[#7F6439]' },
+      { w: 'w-3.5', h: 'h-16', bg: 'bg-[#2D4366]' },
+      { w: 'w-2.5', h: 'h-12', bg: 'bg-[#523A34]' },
+      { w: 'w-3', h: 'h-14', bg: 'bg-[#1D2E49]' },
+      { w: 'w-3', h: 'h-13', bg: 'bg-[#384B6B]' },
+    ],
+    [
+      { w: 'w-3', h: 'h-14', bg: 'bg-[#573E37]' },
+      { w: 'w-3.5', h: 'h-15', bg: 'bg-[#263958]' },
+      { w: 'w-2.5', h: 'h-12', bg: 'bg-[#856B3D]' },
+      { w: 'w-4', h: 'h-15', bg: 'bg-[#21314C]' },
+      { w: 'w-2.5', h: 'h-13', bg: 'bg-[#3B4E6E]' },
+    ],
+    [
+      { w: 'w-3.5', h: 'h-14', bg: 'bg-[#233552]' },
       { w: 'w-2.5', h: 'h-13', bg: 'bg-[#6F5833]' },
-      { w: 'w-3', h: 'h-15', bg: 'bg-[#2E4264]' },
-      { w: 'w-2.5', h: 'h-12', bg: 'bg-[#4A3531]' },
-      { w: 'w-3', h: 'h-14', bg: 'bg-[#1F2F4A]' },
-      { w: 'w-3', h: 'h-13', bg: 'bg-[#384A69]' },
-    ],
-    [
-      { w: 'w-3', h: 'h-14', bg: 'bg-[#4F3934]' },
-      { w: 'w-3', h: 'h-15', bg: 'bg-[#273957]' },
-      { w: 'w-2.5', h: 'h-12', bg: 'bg-[#765F37]' },
-      { w: 'w-3.5', h: 'h-14', bg: 'bg-[#22324D]' },
-      { w: 'w-2.5', h: 'h-13', bg: 'bg-[#3A4D6D]' },
+      { w: 'w-3', h: 'h-15', bg: 'bg-[#4C3630]' },
+      { w: 'w-3.5', h: 'h-14', bg: 'bg-[#2A3D5D]' },
     ],
   ];
 
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 left-0 w-36 sm:w-44 lg:w-52 overflow-hidden opacity-40"
+      className="pointer-events-none absolute inset-y-0 left-0 w-40 sm:w-48 lg:w-60 overflow-hidden"
       style={{
-        maskImage: 'linear-gradient(to right, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%)',
-        WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%)',
+        maskImage:
+          'linear-gradient(to right, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0) 100%)',
+        WebkitMaskImage:
+          'linear-gradient(to right, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0) 100%)',
       }}
     >
-      <div className="absolute inset-0 -left-6 top-20 sm:top-24 flex flex-col gap-5 -rotate-[2deg] blur-[2px]">
+      {/* Subtle warm library sconce illumination */}
+      <div
+        className="absolute -left-10 top-16 h-72 w-52 rounded-full blur-3xl opacity-45"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(229,199,132,0.28) 0%, rgba(197,170,112,0.10) 48%, transparent 75%)',
+        }}
+      />
+
+      {/* Out-of-focus legal wooden bookshelves */}
+      <div className="absolute inset-0 -left-5 top-16 sm:top-20 flex flex-col gap-5 -rotate-[1.5deg] blur-[3px] opacity-45">
         {shelves.map((books, shelfIdx) => (
           <div key={shelfIdx} className="flex flex-col">
             <div className="flex items-end gap-1 px-2">
               {books.map((book, bookIdx) => (
                 <div
                   key={bookIdx}
-                  className={`${book.w} ${book.h} ${book.bg} rounded-t-[2px] border-t border-white/10`}
+                  className={`${book.w} ${book.h} ${book.bg} rounded-t-[2px] border-t border-[#E5C784]/15`}
                 />
               ))}
             </div>
-            <div className="h-2.5 w-full bg-[#241B19] border-t border-[#5A4439]/40 shadow-md" />
+            <div className="h-2.5 w-full bg-[#241B18] border-t border-[#8B6E47]/35 shadow-md" />
           </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-function ScaleOfJusticePedestal({ className }: { className?: string }) {
-  return (
-    <div aria-hidden="true" className={className}>
-      {/* Golden Scale of Justice SVG */}
-      <svg
-        viewBox="0 0 180 175"
-        fill="none"
-        className="w-28 sm:w-32 lg:w-36 xl:w-40 h-auto mx-auto drop-shadow-[0_10px_22px_rgba(17,30,50,0.22)]"
-      >
-        <defs>
-          <linearGradient id="goldScaleGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#F1DBA4" />
-            <stop offset="48%" stopColor="#C5AA70" />
-            <stop offset="100%" stopColor="#8E7238" />
-          </linearGradient>
-          <linearGradient id="goldDarkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#C5AA70" />
-            <stop offset="100%" stopColor="#775D29" />
-          </linearGradient>
-        </defs>
-
-        {/* Top finial */}
-        <circle cx="90" cy="18" r="5.5" fill="url(#goldScaleGrad)" />
-        <path d="M90 23 V140" stroke="url(#goldScaleGrad)" strokeWidth="5" strokeLinecap="round" />
-
-        {/* Crossbar */}
-        <path
-          d="M28 42 Q60 32 90 36 Q120 32 152 42"
-          stroke="url(#goldScaleGrad)"
-          strokeWidth="4.5"
-          strokeLinecap="round"
-        />
-        <circle cx="28" cy="42" r="3.5" fill="url(#goldScaleGrad)" />
-        <circle cx="152" cy="42" r="3.5" fill="url(#goldScaleGrad)" />
-
-        {/* Left chains & pan */}
-        <path d="M28 44 L14 96" stroke="#C5AA70" strokeWidth="1.5" />
-        <path d="M28 44 L28 96" stroke="#C5AA70" strokeWidth="1.5" />
-        <path d="M28 44 L42 96" stroke="#C5AA70" strokeWidth="1.5" />
-        <path
-          d="M11 96 Q28 112 45 96 Z"
-          fill="url(#goldScaleGrad)"
-          stroke="#8E7238"
-          strokeWidth="1"
-        />
-
-        {/* Right chains & pan */}
-        <path d="M152 44 L138 96" stroke="#C5AA70" strokeWidth="1.5" />
-        <path d="M152 44 L152 96" stroke="#C5AA70" strokeWidth="1.5" />
-        <path d="M152 44 L166 96" stroke="#C5AA70" strokeWidth="1.5" />
-        <path
-          d="M135 96 Q152 112 169 96 Z"
-          fill="url(#goldScaleGrad)"
-          stroke="#8E7238"
-          strokeWidth="1"
-        />
-
-        {/* Pedestal base */}
-        <path d="M72 140 H108 L114 148 H66 Z" fill="url(#goldScaleGrad)" />
-        <rect x="60" y="148" width="60" height="7" rx="3" fill="url(#goldDarkGrad)" />
-      </svg>
-
-      {/* Dark slate/navy desk surface */}
-      <div className="w-40 sm:w-44 lg:w-48 h-12 sm:h-16 lg:h-20 bg-gradient-to-b from-[#23324B] to-[#111E32] rounded-t-lg border-t-2 border-[#394D6E]/70 shadow-[0_8px_24px_rgba(17,30,50,0.28)]" />
+      {/* Gentle vertical navy depth vignette */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0E192B]/65 via-transparent to-[#0D1728]/80" />
     </div>
   );
 }
@@ -133,38 +86,39 @@ export function AuthIllustration() {
   return (
     <>
       {/* ============================================================
-          DESKTOP LEFT PANEL (>= 1024px) — 55% width + Organic Curve
+          DESKTOP LEFT PANEL (>= 1024px) — 55% width + Sweeping Organic Curve
          ============================================================ */}
       <aside
         aria-hidden="true"
-        className="hidden lg:flex lg:w-[55%] xl:w-[55%] shrink-0 relative bg-gradient-to-br from-[#111E32] via-[#132238] to-[#192B45] text-white flex-col justify-between overflow-hidden select-none min-h-dvh"
+        className="hidden lg:flex lg:w-[55%] xl:w-[55%] shrink-0 relative bg-gradient-to-br from-[#0F1B2E] via-[#111E32] to-[#172840] text-white flex-col overflow-hidden select-none min-h-dvh"
       >
-        {/* Subtle ambient concentric rings */}
-        <div className="pointer-events-none absolute -top-24 right-14 h-72 w-72 rounded-full border border-white/[0.06]" />
-        <div className="pointer-events-none absolute -top-8 right-28 h-48 w-48 rounded-full border border-[#C5AA70]/10" />
+        {/* Subtle ambient architectural rings */}
+        <div className="pointer-events-none absolute -top-24 right-16 h-72 w-72 rounded-full border border-white/[0.055]" />
+        <div className="pointer-events-none absolute -top-8 right-28 h-48 w-48 rounded-full border border-[#C5AA70]/[0.09]" />
 
-        {/* Blurred legal bookshelf on the left */}
+        {/* Blurred legal bookshelf with warm depth lighting */}
         <AmbientBookshelf />
 
-        {/* Soft ambient glow behind characters */}
-        <div className="pointer-events-none absolute bottom-12 left-[24%] h-72 w-72 rounded-full bg-[#24406D]/40 blur-3xl" />
+        {/* Subtle warm-navy depth glow behind characters */}
+        <div className="pointer-events-none absolute bottom-10 left-[22%] h-80 w-80 rounded-full bg-[#254270]/35 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-20 left-[14%] h-52 w-52 rounded-full bg-[#C5AA70]/[0.08] blur-3xl" />
 
         {/* Top content: Brand + Headline + Description */}
-        <div className="relative z-20 pt-9 xl:pt-11 pl-10 xl:pl-14 pr-20 max-w-[540px] space-y-8">
+        <div className="relative z-20 pt-8 xl:pt-10 2xl:pt-12 pl-10 xl:pl-14 pr-16 max-w-[560px] space-y-6 xl:space-y-7">
           <AuthBrand />
 
           <m.div
             variants={HERO_CONTAINER_VARIANTS}
             initial={reducedMotion ? false : 'hidden'}
             animate="visible"
-            className="space-y-4"
+            className="space-y-3.5"
           >
             <m.h2
               variants={HERO_ITEM_VARIANTS}
               className="text-[40px] xl:text-[46px] leading-[1.08] font-bold tracking-[-0.025em]"
             >
               <span className="block text-white">Simplifica tu</span>
-              <span className="relative inline-block text-[#E5C784] mt-0.5">
+              <span className="relative inline-block italic font-bold text-[#E5C784] mt-0.5 tracking-[-0.015em]">
                 estudio jurídico.
                 <svg
                   viewBox="0 0 320 14"
@@ -187,7 +141,7 @@ export function AuthIllustration() {
 
             <m.p
               variants={HERO_ITEM_VARIANTS}
-              className="text-[14px] xl:text-[15px] leading-relaxed text-white/80 max-w-[390px] pt-2"
+              className="text-[14px] xl:text-[15px] leading-relaxed text-white/80 max-w-[395px] pt-1.5"
             >
               Consulta, organiza y descarga legislación, jurisprudencia y doctrina jurídica en un
               solo lugar.
@@ -195,7 +149,7 @@ export function AuthIllustration() {
           </m.div>
         </div>
 
-        {/* Organic SVG transition to white right panel */}
+        {/* Pronounced, fluid organic SVG curve connecting navy panel to white form */}
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -203,31 +157,32 @@ export function AuthIllustration() {
           className="pointer-events-none absolute inset-0 w-full h-full z-10"
         >
           <path
-            d="M 99 0 C 90 22, 74 44, 58 66 C 48 80, 44 91, 42 100 L 100 100 L 100 0 Z"
+            d="M 99 0 C 97 22, 87 46, 68 65 C 50 83, 34 92, 22 100 L 100 100 L 100 0 Z"
             fill="#FFFFFF"
           />
         </svg>
 
-        {/* Bottom-left stacked books accent */}
-        <div className="pointer-events-none absolute bottom-0 left-6 xl:left-10 z-[15] hidden xl:flex flex-col items-start opacity-90">
-          <div className="w-20 h-3 bg-[#7D6639] rounded-sm border-b border-black/30 ml-2" />
-          <div className="w-24 h-3.5 bg-[#2B3D5B] rounded-sm border-b border-black/40" />
-          <div className="w-28 h-8 bg-[#182438] rounded-t-sm border-t border-white/10" />
-        </div>
+        {/* Realistic 3D Golden Scale of Justice grounded cleanly on dark desk edge */}
+        <m.img
+          src="/auth-scale-3d.webp"
+          alt=""
+          draggable={false}
+          initial={reducedMotion ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.18, ease: EASE_EDITORIAL }}
+          className="pointer-events-none absolute bottom-0 right-[2%] xl:right-[4%] z-[15] w-[205px] xl:w-[248px] 2xl:w-[272px] h-auto object-contain object-bottom rounded-tr-md"
+        />
 
-        {/* Scale of Justice sitting along the white transition */}
-        <ScaleOfJusticePedestal className="pointer-events-none absolute bottom-0 right-[6%] xl:right-[9%] z-[15]" />
-
-        {/* Foreground 3D Legal Avatars */}
-        <div className="relative z-20 mt-auto flex items-end justify-start pl-6 xl:pl-12 pt-4">
+        {/* Foreground 3D Legal Avatars — centered gently in left panel, tight rhythm with headline */}
+        <div className="relative z-20 flex-1 mt-3 xl:mt-4 flex items-end justify-center pr-[9%] xl:pr-[11%] pl-4">
           <m.img
             src="/auth-avatars.webp"
             alt=""
             draggable={false}
-            initial={reducedMotion ? false : { opacity: 0, y: 26, scale: 0.98 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.55, delay: 0.12, ease: EASE_EDITORIAL }}
-            className="w-[74%] max-w-[490px] max-h-[54dvh] h-auto object-contain object-bottom drop-shadow-[0_18px_32px_rgba(10,18,32,0.45)]"
+            className="w-[82%] max-w-[520px] max-h-[58dvh] h-auto object-contain object-bottom drop-shadow-[0_18px_30px_rgba(10,18,32,0.42)]"
           />
         </div>
       </aside>
@@ -237,11 +192,11 @@ export function AuthIllustration() {
          ============================================================ */}
       <header
         aria-hidden="true"
-        className="lg:hidden relative w-full bg-gradient-to-b from-[#111E32] via-[#132238] to-[#192B45] text-white pt-[max(1.25rem,env(safe-area-inset-top))] overflow-hidden select-none shrink-0"
+        className="lg:hidden relative w-full bg-gradient-to-b from-[#0F1B2E] via-[#111E32] to-[#172840] text-white pt-[max(1.25rem,env(safe-area-inset-top))] overflow-hidden select-none shrink-0"
       >
         <AmbientBookshelf />
 
-        {/* Subtle top-right rings */}
+        {/* Subtle top-right ring */}
         <div className="pointer-events-none absolute -top-12 -right-10 h-40 w-40 rounded-full border border-white/[0.06]" />
 
         {/* Top centered brand + headline */}
@@ -259,7 +214,7 @@ export function AuthIllustration() {
               className="text-[24px] min-[390px]:text-[28px] sm:text-[34px] leading-[1.1] font-bold tracking-[-0.02em]"
             >
               <span className="block text-white">Simplifica tu</span>
-              <span className="relative inline-block text-[#E5C784] mt-0.5">
+              <span className="relative inline-block italic font-bold text-[#E5C784] mt-0.5 tracking-[-0.015em]">
                 estudio jurídico.
                 <svg
                   viewBox="0 0 280 12"
@@ -289,31 +244,46 @@ export function AuthIllustration() {
           </m.div>
         </div>
 
-        {/* Avatars + Scale stage */}
-        <div className="relative z-10 mt-3 sm:mt-4 flex items-end justify-center px-4">
-          {/* Scale of justice peeking on right */}
-          <ScaleOfJusticePedestal className="pointer-events-none absolute right-2 sm:right-12 bottom-3 z-0 scale-[0.72] min-[390px]:scale-[0.82] sm:scale-95 origin-bottom-right opacity-95" />
+        {/* Avatars + 3D Scale stage */}
+        <div className="relative z-10 mt-2.5 sm:mt-3 flex items-end justify-center px-4">
+          {/* Subtle white sweep peeking behind the 3D scale on the right (matches mobile reference) */}
+          <svg
+            viewBox="0 0 390 140"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 w-full h-32 sm:h-40 z-0"
+          >
+            <path d="M 240 140 Q 325 82, 390 16 L 390 140 Z" fill="#FFFFFF" />
+          </svg>
+
+          {/* 3D Golden Scale of Justice grounded on the right */}
+          <img
+            src="/auth-scale-3d.webp"
+            alt=""
+            draggable={false}
+            className="pointer-events-none absolute right-0 sm:right-6 bottom-2 z-[5] w-[112px] min-[390px]:w-[128px] sm:w-[162px] h-auto object-contain object-bottom"
+          />
 
           <m.img
             src="/auth-avatars.webp"
             alt=""
             draggable={false}
-            initial={reducedMotion ? false : { opacity: 0, y: 20 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1, ease: EASE_EDITORIAL }}
-            className="relative z-10 w-[230px] min-[390px]:w-[265px] sm:w-[320px] max-h-[155px] min-[390px]:max-h-[185px] sm:max-h-[230px] h-auto object-contain object-bottom drop-shadow-[0_12px_20px_rgba(10,18,32,0.5)]"
+            className="relative z-10 w-[235px] min-[390px]:w-[270px] sm:w-[325px] max-h-[160px] min-[390px]:max-h-[190px] sm:max-h-[235px] h-auto object-contain object-bottom -ml-6 sm:-ml-8 drop-shadow-[0_12px_20px_rgba(10,18,32,0.48)]"
           />
         </div>
 
-        {/* Organic curved white wave transition */}
+        {/* Fluid organic white wave transition */}
         <svg
-          viewBox="0 0 390 48"
+          viewBox="0 0 390 56"
           preserveAspectRatio="none"
           aria-hidden="true"
-          className="relative z-20 block w-full h-8 min-[390px]:h-10 sm:h-12 -mt-6 sm:-mt-8"
+          className="relative z-20 block w-full h-9 min-[390px]:h-11 sm:h-14 -mt-7 sm:-mt-9"
         >
           <path
-            d="M 0 30 C 75 6, 165 6, 245 20 C 310 30, 355 24, 390 12 L 390 48 L 0 48 Z"
+            d="M 0 34 C 72 6, 152 4, 240 22 C 304 35, 356 28, 390 10 L 390 56 L 0 56 Z"
             fill="#FFFFFF"
           />
         </svg>

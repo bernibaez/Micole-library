@@ -53,6 +53,9 @@ export function PdfReaderPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const autoOpenAudio = searchParams.get('audio') === '1';
+  const requestedPageParam = Number.parseInt(searchParams.get('pagina') || '', 10);
+  const initialRequestedPage =
+    Number.isFinite(requestedPageParam) && requestedPageParam > 0 ? requestedPageParam : null;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const { data: book, isLoading: loadingBook } = useBookQuery(id);
   const {
@@ -182,11 +185,15 @@ export function PdfReaderPage() {
   useEffect(() => {
     if (!book || initializedBookRef.current === book.id) return;
     initializedBookRef.current = book.id;
-    const resumePage = savedProgress?.current_page && savedProgress.current_page > 0 ? savedProgress.current_page : 1;
+    const resumePage =
+      initialRequestedPage ??
+      (savedProgress?.current_page && savedProgress.current_page > 0
+        ? savedProgress.current_page
+        : 1);
     setCurrentPage(resumePage);
     setPageInput(String(resumePage));
     void logHistory(book.id, resumePage);
-  }, [book, logHistory, savedProgress?.current_page]);
+  }, [book, initialRequestedPage, logHistory, savedProgress?.current_page]);
 
   // Observe available reader viewport dimensions for crisp fit-width / fit-page rendering
   useEffect(() => {

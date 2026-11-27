@@ -24,8 +24,41 @@ export interface PersonalLibrarySnapshot {
 
 const LOCAL_KEY_PREFIX = 'lexlibrary:v2:personal:';
 const DISMISSED_DOWNLOADS_PREFIX = 'lexlibrary:v2:dismissed-downloads:';
+const COLLECTION_ICONS_PREFIX = 'lexlibrary:v2:collection-icons:';
 const GUEST_FAVORITES_KEY = 'lexlibrary:v2:guest:favorites';
 const GUEST_RECENTS_KEY = 'lexlibrary:v2:guest:recents';
+
+function readCollectionIconsMap(userId: string): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(`${COLLECTION_ICONS_PREFIX}${userId}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCollectionIconLocal(userId: string, collectionId: string, icon: string): void {
+  const map = readCollectionIconsMap(userId);
+  map[collectionId] = icon;
+  try {
+    localStorage.setItem(`${COLLECTION_ICONS_PREFIX}${userId}`, JSON.stringify(map));
+  } catch {
+    // ignore storage quota
+  }
+}
+
+function removeCollectionIconLocal(userId: string, collectionId: string): void {
+  const map = readCollectionIconsMap(userId);
+  if (!(collectionId in map)) return;
+  delete map[collectionId];
+  try {
+    localStorage.setItem(`${COLLECTION_ICONS_PREFIX}${userId}`, JSON.stringify(map));
+  } catch {
+    // ignore storage quota
+  }
+}
 
 function readDismissedDownloadIds(userId: string): Set<string> {
   try {
@@ -219,10 +252,12 @@ export async function fetchPersonalLibrary(userId: string): Promise<PersonalLibr
     }
   }
 
+  const localIcons = readCollectionIconsMap(userId);
   const collections: UserCollection[] = (
     (colRes.data ?? []) as Array<Omit<UserCollection, 'book_ids'>>
   ).map((col) => ({
     ...col,
+    icon: col.icon || localIcons[col.id] || 'folder',
     book_ids: colBookMap.get(col.id) ?? [],
   }));
 
@@ -737,9 +772,10 @@ export async function upsertPageBookmarkNote(
 
 export async function createCollection(
   userId: string,
-  payload: { name: string; description?: string; color?: string }
+  payload: { name: string; description?: string; color?: string; icon?: string }
 ): Promise<UserCollection> {
   const now = new Date().toISOString();
+  const icon = payload.icon || 'folder';
   if (!isSupabaseConfigured || !supabase || userId === 'demo-user') {
     const snap = readLocalSnapshot(userId);
     const collection: UserCollection = {
@@ -747,7 +783,8 @@ export async function createCollection(
       user_id: userId,
       name: payload.name.trim(),
       description: payload.description?.trim() ?? '',
-      color: payload.color ?? '#101D35',
+      color: payload.color ?? '#111E32',
+      icon,
       created_at: now,
       book_ids: [],
     };
@@ -756,21 +793,88 @@ export async function createCollection(
     return collection;
   }
 
-  const { data, error } = await supabase
+  const baseRow = {
+    user_id: userId,
+    name: payload.name.trim(),
+    description: payload.description?.trim() ?? '',
+    color: payload.color ?? '#111E32',
+  };
+
+  let { data, error } = await supabase
     .from('collections')
-    .insert({
-      user_id: userId,
-      name: payload.name.trim(),
-      description: payload.description?.trim() ?? '',
-      color: payload.color ?? '#101D35',
-    })
+    .insert({ ...baseRow, icon })
     .select()
     .single();
+
+  if (error && (error.code === '42703' || error.message.toLowerCase().includes('icon'))) {
+    const retry = await supabase.from('collections').insert(baseRow).select().single();
+    data = retry.data;
+    error = retry.error;
+  }
+
   if (error) throw error;
-  return { ...(data as Omit<UserCollection, 'book_ids'>), book_ids: [] };
+  const created = data as Omit<UserCollection, 'book_ids'>;
+  saveCollectionIconLocal(userId, created.id, icon);
+  return { ...created, icon: created.icon || icon, book_ids: [] };
+}
+
+export async function updateCollection(
+  userId: string,
+  collectionId: string,
+  payload: { name: string; description?: string; color?: string; icon?: string }
+): Promise<UserCollection> {
+  const icon = payload.icon || 'folder';
+  const cleanName = payload.name.trim();
+  const cleanDesc = payload.description?.trim() ?? '';
+  const color = payload.color ?? '#111E32';
+
+  if (!isSupabaseConfigured || !supabase || userId === 'demo-user') {
+    const snap = readLocalSnapshot(userId);
+    let updated: UserCollection | null = null;
+    snap.collections = snap.collections.map((c) => {
+      if (c.id !== collectionId) return c;
+      updated = { ...c, name: cleanName, description: cleanDesc, color, icon };
+      return updated;
+    });
+    writeLocalSnapshot(userId, snap);
+    if (!updated) throw new Error('Colección no encontrada');
+    return updated;
+  }
+
+  const basePatch = {
+    name: cleanName,
+    description: cleanDesc,
+    color,
+  };
+
+  let { data, error } = await supabase
+    .from('collections')
+    .update({ ...basePatch, icon })
+    .eq('id', collectionId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error && (error.code === '42703' || error.message.toLowerCase().includes('icon'))) {
+    const retry = await supabase
+      .from('collections')
+      .update(basePatch)
+      .eq('id', collectionId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error) throw error;
+  saveCollectionIconLocal(userId, collectionId, icon);
+  const row = data as Omit<UserCollection, 'book_ids'>;
+  return { ...row, icon: row.icon || icon, book_ids: [] };
 }
 
 export async function deleteCollection(userId: string, collectionId: string): Promise<void> {
+  removeCollectionIconLocal(userId, collectionId);
   if (!isSupabaseConfigured || !supabase || userId === 'demo-user') {
     const snap = readLocalSnapshot(userId);
     snap.collections = snap.collections.filter((c) => c.id !== collectionId);

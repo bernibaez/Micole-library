@@ -27,6 +27,7 @@ import {
   toggleGuestFavorite,
   toggleLibraryBook,
   togglePageBookmark,
+  updateCollection,
   updateLibraryStatus,
   upsertPageBookmarkNote,
   upsertReadingProgress,
@@ -163,18 +164,42 @@ export function usePersonalLibrary() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: async ({ bookId, status }: { bookId: string; status: LibraryStatus }) => {
+    mutationFn: async ({
+      bookId,
+      status,
+      totalPages,
+    }: {
+      bookId: string;
+      status: LibraryStatus;
+      totalPages?: number | null;
+    }) => {
       if (!userId) throw new Error('Sin sesión');
       await updateLibraryStatus(userId, bookId, status);
+      if (status === 'completed') {
+        const pages = totalPages && totalPages > 0 ? totalPages : 1;
+        await upsertReadingProgress(userId, bookId, pages, pages);
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       invalidate();
-      notify('Estado de lectura actualizado');
+      notify(
+        vars.status === 'completed'
+          ? 'Marcado como completado'
+          : vars.status === 'pending'
+            ? 'Marcado como pendiente'
+            : 'Estado de lectura actualizado'
+      );
     },
+    onError: () => notify('No se pudo actualizar el estado de lectura.', 'error'),
   });
 
   const createCollectionMutation = useMutation({
-    mutationFn: async (payload: { name: string; description?: string; color?: string }) => {
+    mutationFn: async (payload: {
+      name: string;
+      description?: string;
+      color?: string;
+      icon?: string;
+    }) => {
       if (!userId) throw new Error('Sin sesión');
       return createCollection(userId, payload);
     },
@@ -183,6 +208,30 @@ export function usePersonalLibrary() {
       notify(`Colección "${col.name}" creada`);
     },
     onError: () => notify('No se pudo crear la colección. Verifica si ya existe.', 'error'),
+  });
+
+  const updateCollectionMutation = useMutation({
+    mutationFn: async ({
+      collectionId,
+      name,
+      description,
+      color,
+      icon,
+    }: {
+      collectionId: string;
+      name: string;
+      description?: string;
+      color?: string;
+      icon?: string;
+    }) => {
+      if (!userId) throw new Error('Sin sesión');
+      return updateCollection(userId, collectionId, { name, description, color, icon });
+    },
+    onSuccess: (col) => {
+      invalidate();
+      notify(`Colección "${col.name}" actualizada`);
+    },
+    onError: () => notify('No se pudo actualizar la colección.', 'error'),
   });
 
   const deleteCollectionMutation = useMutation({
@@ -407,11 +456,12 @@ export function usePersonalLibrary() {
     logHistory,
     handleToggleBookmark,
     handleSaveBookmarkNote,
-    updateStatus: (bookId: string, status: LibraryStatus) => {
+    updateStatus: (bookId: string, status: LibraryStatus, totalPages?: number | null) => {
       if (!requireAuth('actualizar tu estado de lectura')) return;
-      statusMutation.mutate({ bookId, status });
+      statusMutation.mutate({ bookId, status, totalPages });
     },
     createCollection: createCollectionMutation.mutateAsync,
+    updateCollection: updateCollectionMutation.mutateAsync,
     deleteCollection: deleteCollectionMutation.mutateAsync,
     deleteDownload: deleteDownloadMutation.mutateAsync,
     clearDownloads: () =>
