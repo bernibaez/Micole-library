@@ -64,6 +64,7 @@ function DriveImportContent({
   const [colorMode, setColorMode] = useState<'varied' | 'single'>('varied');
   const [selectedColors, setSelectedColors] = useState<string[]>(() => [...EDITORIAL_COVER_HEXES]);
   const [singleColor, setSingleColor] = useState<string>(EDITORIAL_COVER_HEXES[0]);
+  const [extractCovers, setExtractCovers] = useState(true);
   const [busyMode, setBusyMode] = useState<'files' | 'folders' | null>(null);
   const [result, setResult] = useState<DriveImportResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -133,6 +134,7 @@ function DriveImportContent({
         subject: subject.trim() || null,
         colorMode,
         coverColors: activeColors,
+        extractCovers,
       });
 
       setResult(importRes);
@@ -354,6 +356,24 @@ function DriveImportContent({
                 ? 'Cada libro importado recibirá automáticamente un color distinto de la paleta editorial.'
                 : `Se alternarán automáticamente los ${selectedColors.length} colores seleccionados entre los libros importados.`}
           </p>
+
+          <label className="pt-2 border-t border-line/80 flex items-start gap-2.5 cursor-pointer text-xs text-navy">
+            <input
+              type="checkbox"
+              checked={extractCovers}
+              onChange={(e) => setExtractCovers(e.target.checked)}
+              className="accent-navy h-4 w-4 mt-0.5 shrink-0"
+            />
+            <span>
+              <strong className="font-semibold">
+                Extraer automáticamente la portada real desde Google Drive
+              </strong>
+              <span className="block text-[11px] text-ink-muted mt-0.5">
+                Usa la página 1 del PDF como portada 3D; si un archivo no tiene miniatura, se usará
+                el color editorial seleccionado.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="flex flex-wrap gap-5 text-xs font-medium text-navy">
@@ -426,6 +446,9 @@ function DriveImportContent({
             <ul className="space-y-1">
               <li>Carpetas sincronizadas: {result.report.foldersProcessed}</li>
               <li>Documentos registrados/actualizados: {result.report.documentsImported}</li>
+              {typeof result.report.coversExtracted === 'number' && result.report.coversExtracted > 0 && (
+                <li>Portadas reales extraídas de Drive: {result.report.coversExtracted}</li>
+              )}
               <li>
                 Omitidos por formato no compatible: {result.report.documentsSkippedUnsupported}
               </li>

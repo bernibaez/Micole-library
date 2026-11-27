@@ -8,6 +8,7 @@ import {
   Edit3,
   Eye,
   FolderInput,
+  Image as ImageIcon,
   Plus,
   QrCode,
   Search,
@@ -27,7 +28,12 @@ import {
   saveAdminDocument,
   type UpsertDocumentInput,
 } from '../../services/adminService';
-import { fetchDriveConnectionSummary } from '../../services/driveService';
+import {
+  extractDriveCovers,
+  fetchDriveConnectionSummary,
+  uploadExtractedBookCover,
+} from '../../services/driveService';
+import { renderPdfFirstPageCover } from '../../utils/pdfCoverExtractor';
 import {
   QUERY_KEYS,
   useCategoriesQuery,
@@ -86,6 +92,7 @@ export function AdminDocumentsPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [qrTargetDoc, setQrTargetDoc] = useState<Book | null>(null);
   const [bulkQrOpen, setBulkQrOpen] = useState(false);
+  const [extractingCovers, setExtractingCovers] = useState(false);
   const lastClickedIndexRef = useRef<number | null>(null);
 
   const topCategories = useMemo(
@@ -232,6 +239,85 @@ export function AdminDocumentsPage() {
     }
   };
 
+  const driveDocsMissingCoverCount = useMemo(
+    () => docs.filter((d) => Boolean(d.drive_file_id) && !d.cover_url).length,
+    [docs]
+  );
+
+  const handleExtractCovers = async (documentIds?: string[], overwrite = false) => {
+    if (extractingCovers) return;
+    setExtractingCovers(true);
+    try {
+      let totalUpdated = 0;
+      let remaining = 0;
+      let rounds = 0;
+      const skippedIdSet = new Set<string>();
+      const reasonCounts: Record<string, number> = {};
+
+      do {
+        const res = await extractDriveCovers({
+          documentIds,
+          overwrite,
+          limit: 25,
+        });
+        totalUpdated += res.updated;
+        remaining = res.remaining;
+        (res.skippedIds ?? []).forEach((id) => skippedIdSet.add(id));
+        Object.entries(res.reasons ?? {}).forEach(([k, v]) => {
+          reasonCounts[k] = (reasonCounts[k] ?? 0) + v;
+        });
+        rounds += 1;
+        if (documentIds && documentIds.length > 0) break;
+      } while (remaining > 0 && rounds < 4);
+
+      // Respaldo profesional con PDF.js: si Google Drive no devolvió miniatura para algunos PDFs,
+      // renderizamos directamente la página 1 en el navegador y la guardamos en Supabase Storage.
+      const fallbackBooks = Array.from(skippedIdSet)
+        .map((id) => docs.find((d) => d.id === id))
+        .filter((b): b is Book => Boolean(b))
+        .slice(0, 12);
+
+      let clientRendered = 0;
+      for (const book of fallbackBooks) {
+        const dataUrl = await renderPdfFirstPageCover(book);
+        if (!dataUrl) continue;
+        try {
+          await uploadExtractedBookCover(book.id, dataUrl);
+          clientRendered += 1;
+        } catch {
+          // ignore individual upload failure
+        }
+      }
+
+      totalUpdated += clientRendered;
+      invalidateAll();
+
+      if (totalUpdated > 0) {
+        const pendingLeft = remaining + Math.max(0, skippedIdSet.size - fallbackBooks.length);
+        notify(
+          `Portadas extraídas correctamente: ${totalUpdated} actualizadas${
+            pendingLeft > 0 ? ` (${pendingLeft} pendientes, pulsa de nuevo para continuar)` : ''
+          }.`
+        );
+      } else {
+        const topReason = Object.keys(reasonCounts)[0];
+        notify(
+          topReason
+            ? `No se pudieron extraer portadas (${topReason}). Se conservará la portada editorial.`
+            : 'Todos los documentos ya cuentan con portada o no son archivos PDF legibles.',
+          'info'
+        );
+      }
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : 'No se pudieron extraer las portadas desde Google Drive.',
+        'error'
+      );
+    } finally {
+      setExtractingCovers(false);
+    }
+  };
+
   const handleConfirmBulkDelete = async () => {
     if (validSelectedIds.length === 0 || bulkDeleting) return;
     setBulkDeleting(true);
@@ -262,6 +348,18 @@ export function AdminDocumentsPage() {
         subtitle="Agrega registros manuales, importa archivos o carpetas completas desde Google Drive, edita metadatos y organiza el acervo."
         actions={
           <>
+            {Boolean(driveQuery.data?.connected) && driveDocsMissingCoverCount > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={extractingCovers}
+                onClick={() => void handleExtractCovers(undefined, false)}
+                title="Extrae la página 1 de los PDFs en Google Drive como portada 3D"
+              >
+                <ImageIcon className="h-4 w-4 text-gold-dark" />
+                Extraer portadas ({driveDocsMissingCoverCount})
+              </Button>
+            )}
             <Button
               variant="gold"
               size="sm"
@@ -380,6 +478,17 @@ export function AdminDocumentsPage() {
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
                 Deseleccionar
               </button>
+              {Boolean(driveQuery.data?.connected) && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={extractingCovers}
+                  onClick={() => void handleExtractCovers(validSelectedIds, true)}
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  Extraer portadas ({validSelectedIds.length})
+                </Button>
+              )}
               <Button
                 variant="gold"
                 size="sm"

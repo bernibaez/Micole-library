@@ -93,6 +93,8 @@ export interface DriveFileRecord {
   md5Checksum?: string;
   trashed?: boolean;
   description?: string;
+  thumbnailLink?: string;
+  hasThumbnail?: boolean;
 }
 
 export function isSupportedDriveFile(mimeType: string, name?: string): boolean {
@@ -302,4 +304,177 @@ export async function getActiveDriveSession(
     accessToken: String(tokenJson.access_token),
     expiresAt: nextExpiresAt,
   };
+}
+
+export const BOOK_COVERS_BUCKET = 'book-covers';
+
+let bucketEnsured = false;
+
+export async function ensureBookCoversBucket(adminClient: SupabaseClient): Promise<string | null> {
+  if (bucketEnsured) return null;
+  try {
+    const { data: existing } = await adminClient.storage.getBucket(BOOK_COVERS_BUCKET);
+    if (!existing) {
+      const { error: createErr } = await adminClient.storage.createBucket(BOOK_COVERS_BUCKET, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+      });
+      if (createErr && !createErr.message.toLowerCase().includes('already')) {
+        return `create_bucket:${createErr.message}`;
+      }
+    }
+    bucketEnsured = true;
+    return null;
+  } catch (err) {
+    return `bucket_exception:${err instanceof Error ? err.message : 'unknown'}`;
+  }
+}
+
+export async function uploadBookCoverBytes(
+  adminClient: SupabaseClient,
+  storageKey: string,
+  bytes: Uint8Array,
+  contentType: string
+): Promise<{ coverUrl: string | null; error?: string }> {
+  const bucketErr = await ensureBookCoversBucket(adminClient);
+  if (bucketErr) return { coverUrl: null, error: bucketErr };
+
+  const cleanType = contentType.split(';')[0].trim().toLowerCase() || 'image/jpeg';
+  const ext = cleanType.includes('webp') ? 'webp' : cleanType.includes('png') ? 'png' : 'jpg';
+  const storagePath = `${storageKey}.${ext}`;
+
+  const { error: uploadErr } = await adminClient.storage
+    .from(BOOK_COVERS_BUCKET)
+    .upload(storagePath, bytes, {
+      contentType: cleanType,
+      cacheControl: '31536000',
+      upsert: true,
+    });
+
+  if (uploadErr) {
+    return { coverUrl: null, error: `storage_upload:${uploadErr.message}` };
+  }
+
+  const { data: publicData } = adminClient.storage
+    .from(BOOK_COVERS_BUCKET)
+    .getPublicUrl(storagePath);
+
+  if (!publicData?.publicUrl) {
+    return { coverUrl: null, error: 'storage_public_url_missing' };
+  }
+
+  return { coverUrl: `${publicData.publicUrl}?v=${Date.now()}` };
+}
+
+function upgradeThumbnailSize(rawUrl: string): string {
+  // Avoid breaking HMAC signature on newer lh3.googleusercontent.com/drive-storage URLs
+  if (rawUrl.includes('drive-storage')) return rawUrl;
+  if (/=s\d+(-[a-z0-9-]+)?$/i.test(rawUrl)) {
+    return rawUrl.replace(/=s\d+(-[a-z0-9-]+)?$/i, '=s640');
+  }
+  return rawUrl;
+}
+
+export async function extractAndStoreDriveCoverDetailed(
+  adminClient: SupabaseClient,
+  accessToken: string,
+  fileId: string,
+  thumbnailLink?: string | null
+): Promise<{ coverUrl: string | null; reason?: string }> {
+  try {
+    let rawThumb = thumbnailLink?.trim() || '';
+
+    if (!rawThumb) {
+      const metaUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=thumbnailLink,hasThumbnail&supportsAllDrives=true`;
+      const metaRes = await driveApiFetch(accessToken, metaUrl);
+      if (!metaRes.ok) {
+        return { coverUrl: null, reason: `drive_meta_http_${metaRes.status}` };
+      }
+      const meta = (await metaRes.json().catch(() => null)) as {
+        thumbnailLink?: string;
+        hasThumbnail?: boolean;
+      } | null;
+      rawThumb = meta?.thumbnailLink?.trim() || '';
+    }
+
+    const candidates: Array<{ url: string; withAuth: boolean }> = [];
+    if (rawThumb) {
+      const hiRes = upgradeThumbnailSize(rawThumb);
+      if (hiRes !== rawThumb) {
+        candidates.push({ url: hiRes, withAuth: false });
+        candidates.push({ url: hiRes, withAuth: true });
+      }
+      candidates.push({ url: rawThumb, withAuth: false });
+      candidates.push({ url: rawThumb, withAuth: true });
+    }
+    candidates.push({
+      url: `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w640`,
+      withAuth: true,
+    });
+
+    let imgRes: Response | null = null;
+    let lastStatus = 'no_candidates';
+
+    for (const cand of candidates) {
+      try {
+        const res = await fetch(cand.url, {
+          headers: cand.withAuth ? { Authorization: `Bearer ${accessToken}` } : undefined,
+          redirect: 'follow',
+        });
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (res.ok && ct.startsWith('image/')) {
+          imgRes = res;
+          break;
+        }
+        lastStatus = `http_${res.status}_${ct.split(';')[0] || 'unknown'}`;
+      } catch {
+        lastStatus = 'fetch_exception';
+      }
+    }
+
+    if (!imgRes) {
+      return {
+        coverUrl: null,
+        reason: rawThumb ? `thumb_fetch_failed:${lastStatus}` : `no_thumbnail:${lastStatus}`,
+      };
+    }
+
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+    const bytes = new Uint8Array(await imgRes.arrayBuffer());
+    if (bytes.byteLength < 250) {
+      return { coverUrl: null, reason: 'image_too_small' };
+    }
+
+    const uploaded = await uploadBookCoverBytes(adminClient, `drive/${fileId}`, bytes, contentType);
+    if (!uploaded.coverUrl) {
+      return { coverUrl: null, reason: uploaded.error || 'upload_failed' };
+    }
+
+    return { coverUrl: uploaded.coverUrl };
+  } catch (err) {
+    return {
+      coverUrl: null,
+      reason: `exception:${err instanceof Error ? err.message : 'unknown'}`,
+    };
+  }
+}
+
+/**
+ * Downloads a Drive file's front-page thumbnail and stores it permanently
+ * in Supabase Storage (`book-covers`), returning the public CDN URL.
+ */
+export async function extractAndStoreDriveCover(
+  adminClient: SupabaseClient,
+  accessToken: string,
+  fileId: string,
+  thumbnailLink?: string | null
+): Promise<string | null> {
+  const res = await extractAndStoreDriveCoverDetailed(
+    adminClient,
+    accessToken,
+    fileId,
+    thumbnailLink
+  );
+  return res.coverUrl;
 }

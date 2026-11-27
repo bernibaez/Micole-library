@@ -88,6 +88,7 @@ function DocumentFormFields({
   );
   const [driveFileId, setDriveFileId] = useState(editingDoc?.drive_file_id ?? '');
   const [color, setColor] = useState(editingDoc?.color || '#101D35');
+  const [coverUrl, setCoverUrl] = useState(editingDoc?.cover_url ?? '');
   const [visibility, setVisibility] = useState<DocumentVisibility>(
     editingDoc?.visibility ?? 'public'
   );
@@ -143,6 +144,7 @@ function DocumentFormFields({
           .map((k) => k.trim())
           .filter(Boolean),
         color,
+        cover_url: coverUrl.trim() || null,
         external_url: externalUrl.trim() || null,
         drive_file_id: driveFileId.trim() || null,
         visibility,
@@ -404,6 +406,36 @@ function DocumentFormFields({
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Optional real cover image URL / clear to editorial cover */}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 pt-2 border-t border-line/70">
+          {coverUrl.trim() && (
+            <img
+              src={coverUrl.trim()}
+              alt="Vista previa de portada"
+              className="h-16 w-11 rounded object-cover border border-line shrink-0 bg-white"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <Input
+              label="Imagen de portada (extraída de Drive o URL opcional)"
+              value={coverUrl}
+              onChange={(e) => setCoverUrl(e.target.value)}
+              placeholder="Vacío = usar portada editorial jurídica con el color seleccionado"
+            />
+          </div>
+          {coverUrl.trim() && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setCoverUrl('')}
+              className="shrink-0"
+            >
+              Usar portada editorial
+            </Button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-5 text-xs font-medium text-navy pt-1">

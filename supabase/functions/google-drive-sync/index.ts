@@ -3,6 +3,7 @@ import {
   cleanDocumentTitle,
   DEFAULT_COVER_PALETTE,
   driveApiFetch,
+  extractAndStoreDriveCover,
   extractExtension,
   formatSizeLabel,
   getActiveDriveSession,
@@ -139,7 +140,7 @@ Deno.serve(async (req) => {
         includeItemsFromAllDrives: 'true',
         pageSize: '200',
         fields:
-          'nextPageToken,newStartPageToken,changes(removed,fileId,file(id,name,mimeType,size,parents,webViewLink,modifiedTime,md5Checksum,trashed,description))',
+          'nextPageToken,newStartPageToken,changes(removed,fileId,file(id,name,mimeType,size,parents,webViewLink,modifiedTime,md5Checksum,trashed,description,thumbnailLink,hasThumbnail))',
       });
 
       const res = await driveApiFetch(
@@ -269,6 +270,12 @@ Deno.serve(async (req) => {
           } else if (parentFolder) {
             // Archivo nuevo detectado dentro de una carpeta sincronizada
             const title = cleanDocumentTitle(file.name);
+            const coverUrl = await extractAndStoreDriveCover(
+              adminClient,
+              session.accessToken,
+              file.id,
+              file.thumbnailLink ?? null
+            );
             const { data: insertedDoc, error: insertErr } = await adminClient
               .from('documents')
               .upsert(
@@ -282,6 +289,7 @@ Deno.serve(async (req) => {
                   description: file.description ?? '',
                   document_type: inferDocumentType(title),
                   color: pickEditorialCoverColor(file.id, DEFAULT_COVER_PALETTE),
+                  ...(coverUrl ? { cover_url: coverUrl } : {}),
                   source_type: 'google_drive',
                   drive_file_id: file.id,
                   drive_folder_id: parentDriveId,

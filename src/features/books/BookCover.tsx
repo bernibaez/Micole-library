@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Scale } from 'lucide-react';
 import type { Book } from '../../types';
 import { cn } from '../../utils/cn';
@@ -11,9 +12,11 @@ interface BookCoverProps {
 }
 
 export function BookCover({ book, progressPercent, size = 'md', className }: BookCoverProps) {
+  const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null);
   const showProgress = typeof progressPercent === 'number' && progressPercent > 0;
   const isSmall = size === 'sm';
   const isLarge = size === 'lg';
+  const hasValidCover = Boolean(book.cover_url && failedCoverUrl !== book.cover_url);
 
   return (
     <div className="relative select-none">
@@ -36,13 +39,14 @@ export function BookCover({ book, progressPercent, size = 'md', className }: Boo
         )}
         style={{ backgroundColor: book.color || '#121D32' }}
       >
-        {book.cover_url ? (
+        {hasValidCover && book.cover_url ? (
           <img
             src={book.cover_url}
             alt={`Portada de ${book.title}`}
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+            onError={() => setFailedCoverUrl(book.cover_url)}
+            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.03]"
           />
         ) : (
           <div className="lex-book-linen relative h-full w-full flex flex-col justify-between p-2.5 sm:p-3 text-white">

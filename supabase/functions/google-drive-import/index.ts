@@ -2,6 +2,7 @@ import { buildCorsHeaders, handleCorsPreflight, jsonResponse } from '../_shared/
 import {
   cleanDocumentTitle,
   driveApiFetch,
+  extractAndStoreDriveCover,
   extractExtension,
   formatSizeLabel,
   getActiveDriveSession,
@@ -36,10 +37,11 @@ interface ImportRequestBody {
   colorMode?: 'varied' | 'single';
   color?: string | null;
   coverColors?: string[];
+  extractCovers?: boolean;
 }
 
 const FILE_FIELDS =
-  'id,name,mimeType,size,parents,webViewLink,modifiedTime,md5Checksum,trashed,description';
+  'id,name,mimeType,size,parents,webViewLink,modifiedTime,md5Checksum,trashed,description,thumbnailLink,hasThumbnail';
 
 async function fetchDriveFileMeta(
   accessToken: string,
@@ -133,6 +135,7 @@ Deno.serve(async (req) => {
     const isSingleColorOverride =
       body.colorMode === 'single' || activeCoverPalette.length === 1;
     const batchColorOffset = Math.floor(Math.random() * activeCoverPalette.length);
+    const extractCovers = body.extractCovers !== false;
 
     let categoryName = 'Otras lecturas';
     if (categoryId) {
@@ -148,10 +151,12 @@ Deno.serve(async (req) => {
       foldersProcessed: 0,
       documentsImported: 0,
       documentsSkippedUnsupported: 0,
+      coversExtracted: 0,
       errors: [] as Array<{ driveId: string; name?: string; message: string }>,
     };
 
     const pendingDocumentRows: Array<Record<string, unknown>> = [];
+    const thumbnailByDriveId = new Map<string, string | null>();
     const trackedRootsToRegister: Array<{
       driveFolderId: string;
       folderId: string;
@@ -210,6 +215,8 @@ Deno.serve(async (req) => {
         pendingDocumentRows.length,
         batchColorOffset
       );
+
+      thumbnailByDriveId.set(file.id, file.thumbnailLink ?? null);
 
       pendingDocumentRows.push({
         name: file.name,
@@ -315,12 +322,19 @@ Deno.serve(async (req) => {
     // Preservar metadatos curados manualmente para registros ya existentes
     const existingByDriveId = new Map<
       string,
-      { title: string; author: string; description: string; subject: string | null; color: string | null }
+      {
+        title: string;
+        author: string;
+        description: string;
+        subject: string | null;
+        color: string | null;
+        cover_url: string | null;
+      }
     >();
     for (const idBatch of chunkArray(driveIds, 100)) {
       const { data: existing } = await adminClient
         .from('documents')
-        .select('drive_file_id, title, author, description, subject, color')
+        .select('drive_file_id, title, author, description, subject, color, cover_url')
         .in('drive_file_id', idBatch);
       for (const ex of existing ?? []) {
         if (ex.drive_file_id) {
@@ -330,14 +344,50 @@ Deno.serve(async (req) => {
             description: String(ex.description ?? ''),
             subject: ex.subject ? String(ex.subject) : null,
             color: ex.color ? String(ex.color) : null,
+            cover_url: ex.cover_url ? String(ex.cover_url) : null,
           });
         }
       }
     }
 
+    // Extraer portadas reales (página 1 del PDF) desde Google Drive a Supabase Storage
+    const extractedCoverByDriveId = new Map<string, string>();
+    if (extractCovers) {
+      const candidates = uniqueRows.filter((row) => {
+        const dId = String(row.drive_file_id);
+        const existing = existingByDriveId.get(dId);
+        return !existing?.cover_url;
+      });
+
+      // Concurrencia controlada (lotes de 5, hasta 40 por importación para no exceder timeout)
+      for (const coverBatch of chunkArray(candidates.slice(0, 40), 5)) {
+        await Promise.all(
+          coverBatch.map(async (row) => {
+            const dId = String(row.drive_file_id);
+            const coverUrl = await extractAndStoreDriveCover(
+              adminClient,
+              session.accessToken,
+              dId,
+              thumbnailByDriveId.get(dId)
+            );
+            if (coverUrl) {
+              extractedCoverByDriveId.set(dId, coverUrl);
+              report.coversExtracted += 1;
+            }
+          })
+        );
+      }
+    }
+
     const mergedRows = uniqueRows.map((row) => {
-      const existing = existingByDriveId.get(String(row.drive_file_id));
-      if (!existing) return row;
+      const dId = String(row.drive_file_id);
+      const existing = existingByDriveId.get(dId);
+      const nextCover = existing?.cover_url ?? extractedCoverByDriveId.get(dId) ?? null;
+
+      if (!existing) {
+        return nextCover ? { ...row, cover_url: nextCover } : row;
+      }
+
       const keepExistingColor =
         !isSingleColorOverride &&
         existing.color &&
@@ -349,6 +399,7 @@ Deno.serve(async (req) => {
         description: existing.description || row.description,
         subject: existing.subject ?? row.subject,
         color: keepExistingColor ? existing.color : row.color,
+        ...(nextCover ? { cover_url: nextCover } : {}),
       };
     });
 

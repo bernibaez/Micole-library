@@ -107,6 +107,7 @@ export interface DriveImportOptions {
   subject?: string | null;
   colorMode?: 'varied' | 'single';
   coverColors?: string[];
+  extractCovers?: boolean;
 }
 
 export interface DriveImportResult {
@@ -116,6 +117,7 @@ export interface DriveImportResult {
     documentsImported: number;
     documentsSkippedUnsupported: number;
     colorsApplied?: boolean;
+    coversExtracted?: number;
     errors: Array<{ driveId: string; name?: string; message: string }>;
   };
 }
@@ -210,6 +212,38 @@ export async function triggerGoogleDriveSync(): Promise<DriveSyncResult> {
     await applyFallbackCoverColors(startedAt, EDITORIAL_COVER_HEXES, false);
   }
   return result;
+}
+
+export interface DriveExtractCoversResult {
+  success: boolean;
+  processed: number;
+  updated: number;
+  skipped: number;
+  skippedIds?: string[];
+  reasons?: Record<string, number>;
+  remaining: number;
+}
+
+export async function extractDriveCovers(options?: {
+  documentIds?: string[];
+  overwrite?: boolean;
+  limit?: number;
+}): Promise<DriveExtractCoversResult> {
+  return invokeFunction<DriveExtractCoversResult>(
+    'google-drive-covers',
+    (options ?? {}) as unknown as Record<string, unknown>
+  );
+}
+
+export async function uploadExtractedBookCover(
+  documentId: string,
+  imageDataUrl: string
+): Promise<{ success: boolean; coverUrl: string }> {
+  return invokeFunction<{ success: boolean; coverUrl: string }>('google-drive-covers', {
+    action: 'upload',
+    documentId,
+    imageDataUrl,
+  });
 }
 
 export function buildDriveProxyRequest(

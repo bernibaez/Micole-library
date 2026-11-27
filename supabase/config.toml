@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.google-drive-sync]
 verify_jwt = false
+
+[functions.google-drive-covers]
+verify_jwt = false
