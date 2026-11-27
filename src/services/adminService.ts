@@ -150,6 +150,26 @@ export async function deleteAdminDocuments(documentIds: string[]): Promise<numbe
   return uniqueIds.length;
 }
 
+// Restaura la portada editorial jurídica (elimina cover_url) para los documentos indicados.
+export async function clearAdminDocumentCovers(documentIds: string[]): Promise<number> {
+  const uniqueIds = Array.from(new Set(documentIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return 0;
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Configura Supabase para actualizar portadas.');
+  }
+
+  const chunkSize = 100;
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const chunk = uniqueIds.slice(i, i + chunkSize);
+    const { error } = await supabase
+      .from('documents')
+      .update({ cover_url: null })
+      .in('id', chunk);
+    if (error) throw error;
+  }
+  return uniqueIds.length;
+}
+
 export async function moveAdminDocument(
   documentId: string,
   target: { category_id: string | null; subcategory_id: string | null; folder_id: string | null }

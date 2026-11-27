@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   Plus,
   QrCode,
+  RotateCcw,
   Search,
   Trash2,
   X,
@@ -21,6 +22,7 @@ import { DriveImportModal } from './DriveImportModal';
 import { AdminBulkQrModal } from './AdminBulkQrModal';
 import { QrShareModal } from '../../components/ui/QrShareModal';
 import {
+  clearAdminDocumentCovers,
   deleteAdminDocument,
   deleteAdminDocuments,
   fetchAdminDocuments,
@@ -93,6 +95,7 @@ export function AdminDocumentsPage() {
   const [qrTargetDoc, setQrTargetDoc] = useState<Book | null>(null);
   const [bulkQrOpen, setBulkQrOpen] = useState(false);
   const [extractingCovers, setExtractingCovers] = useState(false);
+  const [clearingCovers, setClearingCovers] = useState(false);
   const lastClickedIndexRef = useRef<number | null>(null);
 
   const topCategories = useMemo(
@@ -271,18 +274,24 @@ export function AdminDocumentsPage() {
       } while (remaining > 0 && rounds < 4);
 
       // Respaldo profesional con PDF.js: si Google Drive no devolvió miniatura para algunos PDFs,
-      // renderizamos directamente la página 1 en el navegador y la guardamos en Supabase Storage.
+      // renderizamos la página 1 solo cuando realmente tiene diseño visual de portada;
+      // si es una página de texto simple (sin portada), se conserva su portada editorial.
       const fallbackBooks = Array.from(skippedIdSet)
         .map((id) => docs.find((d) => d.id === id))
         .filter((b): b is Book => Boolean(b))
         .slice(0, 12);
 
       let clientRendered = 0;
+      let skippedPlainTextCount = 0;
       for (const book of fallbackBooks) {
-        const dataUrl = await renderPdfFirstPageCover(book);
-        if (!dataUrl) continue;
+        const result = await renderPdfFirstPageCover(book, { onlyIfVisualCover: true });
+        if (result.skippedPlainText) {
+          skippedPlainTextCount += 1;
+          continue;
+        }
+        if (!result.dataUrl) continue;
         try {
-          await uploadExtractedBookCover(book.id, dataUrl);
+          await uploadExtractedBookCover(book.id, result.dataUrl);
           clientRendered += 1;
         } catch {
           // ignore individual upload failure
@@ -294,17 +303,30 @@ export function AdminDocumentsPage() {
 
       if (totalUpdated > 0) {
         const pendingLeft = remaining + Math.max(0, skippedIdSet.size - fallbackBooks.length);
+        const keptNote =
+          skippedPlainTextCount > 0
+            ? ` · ${skippedPlainTextCount} sin portada visual conservaron su portada editorial`
+            : '';
         notify(
-          `Portadas extraídas correctamente: ${totalUpdated} actualizadas${
+          `Portadas extraídas correctamente: ${totalUpdated} actualizadas${keptNote}${
             pendingLeft > 0 ? ` (${pendingLeft} pendientes, pulsa de nuevo para continuar)` : ''
           }.`
+        );
+      } else if (skippedPlainTextCount > 0) {
+        notify(
+          `${skippedPlainTextCount} ${
+            skippedPlainTextCount === 1
+              ? 'documento no tenía portada visual y conservó su portada editorial'
+              : 'documentos no tenían portada visual y conservaron su portada editorial'
+          }.`,
+          'info'
         );
       } else {
         const topReason = Object.keys(reasonCounts)[0];
         notify(
           topReason
             ? `No se pudieron extraer portadas (${topReason}). Se conservará la portada editorial.`
-            : 'Todos los documentos ya cuentan con portada o no son archivos PDF legibles.',
+            : 'Todos los documentos ya cuentan con portada o conservaron su portada editorial.',
           'info'
         );
       }
@@ -315,6 +337,32 @@ export function AdminDocumentsPage() {
       );
     } finally {
       setExtractingCovers(false);
+    }
+  };
+
+  const selectedWithCoverIds = useMemo(
+    () => selectedDocsPreview.filter((d) => Boolean(d.cover_url)).map((d) => d.id),
+    [selectedDocsPreview]
+  );
+
+  const handleResetToEditorialCovers = async (documentIds: string[]) => {
+    if (clearingCovers || documentIds.length === 0) return;
+    setClearingCovers(true);
+    try {
+      const count = await clearAdminDocumentCovers(documentIds);
+      invalidateAll();
+      notify(
+        count === 1
+          ? 'Se restauró la portada editorial para 1 documento.'
+          : `Se restauró la portada editorial para ${count} documentos.`
+      );
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : 'No se pudo restaurar la portada editorial.',
+        'error'
+      );
+    } finally {
+      setClearingCovers(false);
     }
   };
 
@@ -487,6 +535,18 @@ export function AdminDocumentsPage() {
                 >
                   <ImageIcon className="h-4 w-4" />
                   Extraer portadas ({validSelectedIds.length})
+                </Button>
+              )}
+              {selectedWithCoverIds.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={clearingCovers}
+                  onClick={() => void handleResetToEditorialCovers(selectedWithCoverIds)}
+                  title="Quitar imagen extraída y conservar la portada editorial jurídica"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Portada editorial ({selectedWithCoverIds.length})
                 </Button>
               )}
               <Button
