@@ -56,12 +56,21 @@ const ROMAN_ORDINALS_FEM: Record<string, string> = {
 };
 
 /**
+ * Normalizes exotic Unicode spacing/zero-width characters often found in legal PDFs.
+ */
+function sanitizePdfString(raw: string): string {
+  return raw
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+}
+
+/**
  * Converts a legal text chunk into natural spoken Spanish without altering
  * what the user sees on screen. Expands legal abbreviations, softens ALL-CAPS
  * headings, converts structural Roman numerals, and cleans PDF artifacts.
  */
 export function normalizeLegalTextForSpeech(input: string): string {
-  let text = input
+  let text = sanitizePdfString(input)
     // Strip table-of-contents dot leaders (e.g. "Capítulo I ......... 14")
     .replace(/\.{4,}/g, ', ')
     .replace(/_{3,}/g, ' ')
@@ -161,41 +170,183 @@ function isRunningHeaderOrPageNumber(lineText: string, normalizedY: number): boo
   return false;
 }
 
+interface RawGlyphItem {
+  x: number;
+  y: number;
+  width: number;
+  fontSize: number;
+  str: string;
+}
+
 interface PositionedLine {
   y: number;
   height: number;
   text: string;
 }
 
+/**
+ * Reconstructs a single visual line of text from PDF.js TextItems using exact
+ * X-coordinate geometry. Handles all PDF styles cleanly:
+ * - Normal PDFs with explicit space characters
+ * - Per-character / kerning-split PDFs (does NOT inject spaces between adjacent letters)
+ * - Justified / word-positioned PDFs without space chars (DOES inject space on real X gaps)
+ */
+function buildLineTextFromItems(items: RawGlyphItem[]): string {
+  if (items.length === 0) return '';
+
+  // Sort strictly left-to-right on this visual line
+  const sorted = [...items].sort((a, b) => a.x - b.x);
+
+  // Estimate average character width from non-space items on this line
+  let totalWidth = 0;
+  let totalChars = 0;
+  for (const item of sorted) {
+    const clean = item.str.trim();
+    if (clean.length > 0 && item.width > 0) {
+      totalWidth += item.width;
+      totalChars += clean.length;
+    }
+  }
+  const lineAvgCharWidth = totalChars > 0 ? totalWidth / totalChars : 0;
+
+  let text = '';
+  let lastEndX: number | null = null;
+  let lastFontSize = 11;
+  let pendingSpace = false;
+
+  for (const item of sorted) {
+    const str = sanitizePdfString(item.str);
+    if (str.length === 0) {
+      // Empty item with positive width acts as a spacer in some PDFs
+      if (item.width > item.fontSize * 0.18 && text.length > 0) {
+        pendingSpace = true;
+      }
+      continue;
+    }
+
+    // Pure whitespace item: mark pending space, do not lose previous glyph end position
+    if (str.trim().length === 0) {
+      if (text.length > 0) pendingSpace = true;
+      if (lastEndX !== null && item.width > 0) {
+        lastEndX = Math.max(lastEndX, item.x + item.width);
+      }
+      continue;
+    }
+
+    const startsWithSpace = str.startsWith(' ');
+    const endsWithSpace = str.endsWith(' ');
+    const trimmedStart = str.trimStart();
+
+    if (text.length > 0) {
+      const refFontSize = Math.max(6, (lastFontSize + item.fontSize) / 2);
+      const refCharWidth =
+        lineAvgCharWidth > 0
+          ? Math.max(refFontSize * 0.34, Math.min(refFontSize * 0.72, lineAvgCharWidth))
+          : refFontSize * 0.48;
+
+      // Real word space in PDF typography is ~0.22-0.35em; letter kerning/tracking is < 0.14em
+      const gap = lastEndX !== null ? item.x - lastEndX : 0;
+      const spaceThreshold = Math.max(refFontSize * 0.18, refCharWidth * 0.38);
+      const isLargeGeometricGap = lastEndX !== null && gap > spaceThreshold;
+
+      const shouldInsertSpace =
+        !text.endsWith(' ') &&
+        (pendingSpace || startsWithSpace || isLargeGeometricGap) &&
+        !/^[,.;:!?)\]]/.test(trimmedStart);
+
+      if (shouldInsertSpace) {
+        text += ' ';
+      }
+    }
+
+    text += trimmedStart;
+    pendingSpace = endsWithSpace;
+    lastFontSize = item.fontSize;
+    const estimatedWidth =
+      item.width > 0
+        ? item.width
+        : trimmedStart.length * (lineAvgCharWidth > 0 ? lineAvgCharWidth : item.fontSize * 0.52);
+    lastEndX = item.x + estimatedWidth;
+  }
+
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Protects periods that do NOT end a sentence (legal abbreviations, ordinals like 6o./10a.,
+ * initials like Tesis I.6o.T.122, and anything inside parentheses).
+ */
+function protectNonTerminalPeriods(text: string): string {
+  // 1. Protect periods inside parenthetical citations like "(10a.)" or "(cfr. Art. 4)"
+  let result = '';
+  let parenDepth = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === '(') parenDepth += 1;
+    else if (ch === ')' && parenDepth > 0) parenDepth -= 1;
+
+    if (ch === '.' && parenDepth > 0) {
+      result += '<DOT>';
+    } else {
+      result += ch;
+    }
+  }
+
+  // 2. Protect known Spanish legal abbreviations
+  result = result.replace(
+    /\b(Art|Arts|Inc|Incs|Núm|Num|Núms|Nums|No|Dr|Dra|Lic|Licda|Cap|Caps|Tít|Tit|Sec|Secs|Ord|Lit|Párr|Parr|Párrs|Parrs|Vol|Pág|Pag|Págs|Pags|Ed|Cfr|Vid|etc|vs|Sr|Sra|Rep|Dom|Const|Frac|Fracc|Ap|Tesis|Semanario)\./gi,
+    '$1<DOT>'
+  );
+
+  // 3. Protect ordinal abbreviations like "1o.", "6o.", "10a.", "2da.", "3ro."
+  result = result.replace(/\b(\d{1,3}(?:o|a|ro|ra|do|da|to|ta))\./gi, '$1<DOT>');
+
+  // 4. Protect single-letter initials like "I.", "T.", "L." when followed by space + another token
+  result = result.replace(/\b([A-ZÁÉÍÓÚÑ])\.(?=\s+[A-ZÁÉÍÓÚÑ0-9])/g, '$1<DOT>');
+
+  return result;
+}
+
 function segmentParagraph(paragraph: string, isLastParagraph: boolean): AudiobookChunk[] {
-  const cleaned = paragraph
-    // Rejoin words broken across lines with hyphens
-    .replace(/([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])-\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])/g, '$1$2')
-    .replace(/\u00a0/g, ' ')
+  const cleaned = sanitizePdfString(paragraph)
+    // Rejoin words broken across lines with soft or hard hyphens
+    .replace(/([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])[-\u00AD]\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ])/g, '$1$2')
+    .replace(/\u00AD/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   if (!cleaned) return [];
 
-  // Protect legal abbreviations from splitting sentences prematurely
-  const protectedText = cleaned.replace(
-    /\b(Art|Arts|Inc|Incs|Núm|Num|Núms|Nums|No|Dr|Dra|Lic|Licda|Cap|Caps|Tít|Tit|Sec|Secs|Ord|Lit|Párr|Parr|Párrs|Parrs|Vol|Pág|Pag|Págs|Pags|Ed|Cfr|Vid|etc|vs|Sr|Sra|Rep|Dom|Const)\./gi,
-    '$1<DOT>'
-  );
+  const protectedText = protectNonTerminalPeriods(cleaned);
 
   const rawSentences = protectedText
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.replace(/<DOT>/g, '.').trim())
     .filter((s) => s.length > 0);
 
+  // Merge tiny stray fragments (e.g., short citation prefixes or stray closing punctuation)
+  const mergedSentences: string[] = [];
+  for (const s of rawSentences) {
+    const prev = mergedSentences[mergedSentences.length - 1];
+    if (
+      prev &&
+      (s.length < 18 || /^[\])},.;:]/.test(s) || prev.length < 18) &&
+      prev.length + s.length + 1 <= 280
+    ) {
+      const glue = /^[\])},.;:]/.test(s) ? '' : ' ';
+      mergedSentences[mergedSentences.length - 1] = `${prev}${glue}${s}`;
+    } else {
+      mergedSentences.push(s);
+    }
+  }
+
   const chunks: AudiobookChunk[] = [];
 
-  for (let sIdx = 0; sIdx < rawSentences.length; sIdx += 1) {
-    const sentence = rawSentences[sIdx];
-    const isEndOfParagraph = sIdx === rawSentences.length - 1;
+  for (let sIdx = 0; sIdx < mergedSentences.length; sIdx += 1) {
+    const sentence = mergedSentences[sIdx];
+    const isEndOfParagraph = sIdx === mergedSentences.length - 1;
     const endPause = isEndOfParagraph ? (isLastParagraph ? 200 : 340) : 165;
 
-    // Comfortable chunk length (~260 chars) gives smoother phrasing & fewer awkward stops
     if (sentence.length <= 270) {
       const spoken = normalizeLegalTextForSpeech(sentence);
       if (spoken) {
@@ -257,8 +408,10 @@ function segmentParagraph(paragraph: string, isLastParagraph: boolean): Audioboo
 }
 
 /**
- * Extracts text from a PDF page while filtering standalone page numbers/margins,
- * preserving paragraph boundaries for natural pauses, and normalizing legal diction.
+ * Extracts text from a PDF page using geometric X/Y coordinates so per-character
+ * and word-positioned PDFs reconstruct clean words without broken spacing,
+ * filters standalone page numbers/margins, preserves paragraph pauses, and
+ * normalizes Spanish legal diction.
  */
 export async function extractAudiobookChunksFromPage(
   page: PDFPageProxy
@@ -267,34 +420,61 @@ export async function extractAudiobookChunksFromPage(
   const pageHeight = Math.max(1, viewport.height);
   const textContent = await page.getTextContent();
 
-  // Group PDF text items into horizontal visual lines by Y coordinate
-  const lines: PositionedLine[] = [];
+  // 1. Collect positioned glyph/text runs into horizontal visual lines by Y
+  const lineBuckets: Array<{ y: number; height: number; items: RawGlyphItem[] }> = [];
+
   for (const item of textContent.items) {
     if (!('str' in item)) continue;
-    const str = item.str;
-    if (!str) continue;
-
     const transform = Array.isArray(item.transform) ? item.transform : null;
-    const y = transform ? Number(transform[5]) : 0;
-    const fontHeight = transform ? Math.max(8, Math.abs(Number(transform[3])) || 12) : 12;
+    const x = transform ? Number(transform[4]) || 0 : 0;
+    const y = transform ? Number(transform[5]) || 0 : 0;
+    const scaleX = transform ? Math.hypot(Number(transform[0]) || 0, Number(transform[1]) || 0) : 12;
+    const scaleY = transform ? Math.hypot(Number(transform[2]) || 0, Number(transform[3]) || 0) : 12;
+    const fontSize = Math.max(6, scaleY || scaleX || 12);
+    const width = 'width' in item && typeof item.width === 'number' ? item.width : 0;
 
-    const lastLine = lines[lines.length - 1];
-    if (lastLine && Math.abs(lastLine.y - y) <= Math.max(4, fontHeight * 0.45)) {
-      // Join items on the same line carefully
-      const needsSpace =
-        lastLine.text.length > 0 &&
-        !lastLine.text.endsWith(' ') &&
-        !lastLine.text.endsWith('-') &&
-        !str.startsWith(' ') &&
-        !/^[,.;:!?)]/.test(str);
-      lastLine.text += needsSpace ? ` ${str}` : str;
-      lastLine.height = Math.max(lastLine.height, fontHeight);
+    const glyph: RawGlyphItem = {
+      x,
+      y,
+      width,
+      fontSize,
+      str: item.str,
+    };
+
+    // Match an existing visual line within 45% of font height (usually the last line,
+    // but check recent buckets in case of out-of-order bold/superscript runs)
+    let matchedBucket: (typeof lineBuckets)[number] | null = null;
+    const searchStart = Math.max(0, lineBuckets.length - 6);
+    for (let i = lineBuckets.length - 1; i >= searchStart; i -= 1) {
+      const bucket = lineBuckets[i];
+      const tolerance = Math.max(3.5, Math.min(bucket.height, fontSize) * 0.45);
+      if (Math.abs(bucket.y - y) <= tolerance) {
+        matchedBucket = bucket;
+        break;
+      }
+    }
+
+    if (matchedBucket) {
+      matchedBucket.items.push(glyph);
+      matchedBucket.height = Math.max(matchedBucket.height, fontSize);
     } else {
-      lines.push({ y, height: fontHeight, text: str });
+      lineBuckets.push({ y, height: fontSize, items: [glyph] });
     }
   }
 
-  // Filter out margin page numbers and group lines into paragraphs
+  // Convert buckets into clean reconstructed text lines
+  const lines: PositionedLine[] = [];
+  for (const bucket of lineBuckets) {
+    const reconstructed = buildLineTextFromItems(bucket.items);
+    if (!reconstructed) continue;
+    lines.push({
+      y: bucket.y,
+      height: bucket.height,
+      text: reconstructed,
+    });
+  }
+
+  // 2. Filter out margin page numbers and group lines into paragraphs
   const paragraphs: string[] = [];
   let currentParagraph = '';
   let prevLine: PositionedLine | null = null;
@@ -322,8 +502,8 @@ export async function extractAudiobookChunksFromPage(
       paragraphs.push(currentParagraph.trim());
       currentParagraph = trimmed;
     } else if (currentParagraph) {
-      if (currentParagraph.endsWith('-')) {
-        currentParagraph = `${currentParagraph.slice(0, -1)}${trimmed}`;
+      if (/[-–\u00AD]$/.test(currentParagraph)) {
+        currentParagraph = `${currentParagraph.replace(/[-–\u00AD]$/, '')}${trimmed}`;
       } else {
         currentParagraph = `${currentParagraph} ${trimmed}`;
       }
